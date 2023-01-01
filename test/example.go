@@ -1,7 +1,7 @@
 package main
 
 import (
-	"gitlab.cowave.com/gogo/flaskgo"
+	"github.com/Chendemo12/flaskgo"
 	"time"
 )
 

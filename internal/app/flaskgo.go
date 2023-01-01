@@ -10,13 +10,13 @@
 package app
 
 import (
+	"github.com/Chendemo12/flaskgo/internal/core"
+	"github.com/Chendemo12/flaskgo/internal/mode"
+	"github.com/Chendemo12/flaskgo/internal/swag"
+	"github.com/Chendemo12/functools/python"
+	"github.com/Chendemo12/functools/zaplog"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
-	"gitlab.cowave.com/gogo/flaskgo/internal/core"
-	"gitlab.cowave.com/gogo/flaskgo/internal/mode"
-	"gitlab.cowave.com/gogo/flaskgo/internal/swag"
-	"gitlab.cowave.com/gogo/functools/python"
-	"gitlab.cowave.com/gogo/functools/zaplog"
 	"log"
 	"net"
 	"net/http"

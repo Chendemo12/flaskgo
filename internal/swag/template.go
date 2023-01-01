@@ -2,9 +2,9 @@ package swag
 
 import (
 	"bytes"
+	"github.com/Chendemo12/flaskgo/internal/mode"
+	"github.com/Chendemo12/functools/helper"
 	"github.com/gofiber/fiber/v2"
-	"gitlab.cowave.com/gogo/flaskgo/internal/mode"
-	"gitlab.cowave.com/gogo/functools/helper"
 )
 
 const (

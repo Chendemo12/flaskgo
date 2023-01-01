@@ -2,12 +2,12 @@ package app
 
 import (
 	"fmt"
+	"github.com/Chendemo12/flaskgo/internal/core"
+	"github.com/Chendemo12/functools/cprint"
+	"github.com/Chendemo12/functools/helper"
 	"github.com/gofiber/fiber/v2"
 	echo "github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"gitlab.cowave.com/gogo/flaskgo/internal/core"
-	"gitlab.cowave.com/gogo/functools/cprint"
-	"gitlab.cowave.com/gogo/functools/helper"
 	"runtime"
 )
 

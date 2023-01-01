@@ -1,9 +1,9 @@
 package app
 
 import (
+	"github.com/Chendemo12/functools/zaplog"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
-	"gitlab.cowave.com/gogo/functools/zaplog"
 )
 
 const ( // json序列化错误, 关键信息的序号

@@ -1,8 +1,8 @@
 package app
 
 import (
-	"gitlab.cowave.com/gogo/flaskgo/internal/core"
-	"gitlab.cowave.com/gogo/flaskgo/internal/mode"
+	"github.com/Chendemo12/flaskgo/internal/core"
+	"github.com/Chendemo12/flaskgo/internal/mode"
 )
 
 // innerOutput 允许上层禁用FlaskGo的输出，但开启dev模式时则忽略禁用开关

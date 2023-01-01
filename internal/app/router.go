@@ -1,9 +1,9 @@
 package app
 
 import (
+	"github.com/Chendemo12/flaskgo/internal/constant"
+	"github.com/Chendemo12/flaskgo/internal/swag"
 	"github.com/gofiber/fiber/v2"
-	"gitlab.cowave.com/gogo/flaskgo/internal/constant"
-	"gitlab.cowave.com/gogo/flaskgo/internal/swag"
 	"net/http"
 	"reflect"
 	"strings"

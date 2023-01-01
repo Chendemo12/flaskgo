@@ -4,10 +4,10 @@
 package flaskgo
 
 import (
-	"gitlab.cowave.com/gogo/flaskgo/internal/app"
-	"gitlab.cowave.com/gogo/flaskgo/internal/core"
-	"gitlab.cowave.com/gogo/flaskgo/internal/mode"
-	"gitlab.cowave.com/gogo/flaskgo/internal/swag"
+	"github.com/Chendemo12/flaskgo/internal/app"
+	"github.com/Chendemo12/flaskgo/internal/core"
+	"github.com/Chendemo12/flaskgo/internal/mode"
+	"github.com/Chendemo12/flaskgo/internal/swag"
 	"time"
 )
 

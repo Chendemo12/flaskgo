@@ -15,7 +15,7 @@ godoc -http=:6060
 go install golang.org/x/pkgsite/cmd/pkgsite@latest
 cd flaskgo/
 pkgsite -http=:6060 -list=false
-# 浏览器打开：http://127.0.0.1:6060/gitlab.cowave.com/gogo/flaskgo
+# 浏览器打开：http://127.0.0.1:6060/github.com/Chendemo12/flaskgo
 ```
 
 ### `struct`内存对齐
@@ -34,7 +34,7 @@ fieldalignment -fix ./...
 echo "machine gitlab.cowave.com login chenguang.li@cowave.com password glpat-zVc6XisKQfy-TPxzCym8" > ~/.netrc
 
 export GOSUMDB=off
-go get -v gitlab.cowave.com/gogo/functools
+go get -v github.com/Chendemo12/functools
 ```
 
 - Windows
@@ -43,13 +43,13 @@ go get -v gitlab.cowave.com/gogo/functools
 echo "machine gitlab.cowave.com login chenguang.li@cowave.com password glpat-zVc6XisKQfy-TPxzCym8" > ~/.netrc
 
 $Env:GOSUMDB = "off"
-go get -v gitlab.cowave.com/gogo/flaskgo
+go get -v github.com/Chendemo12/flaskgo
 ```
 
 ### 作为第三方库导入
 
 ```bash
-go get https://gitlab.cowave.com/gogo/flaskgo
+go get https://github.com/Chendemo12/flaskgo
 ```
 
 ## Examples:
@@ -57,7 +57,7 @@ go get https://gitlab.cowave.com/gogo/flaskgo
 ### Guide
 
 - [guide example](./test/example.go)
-- [sample](https://gitlab.cowave.com/gogo/sample)
+- [sample](https://github.com/Chendemo12/sample)
 
 ## TODO:
 

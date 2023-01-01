@@ -1,7 +1,7 @@
 package swag
 
 import (
-	"gitlab.cowave.com/gogo/flaskgo/internal/constant"
+	"github.com/Chendemo12/flaskgo/internal/constant"
 	"reflect"
 )
 

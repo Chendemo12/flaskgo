@@ -2,10 +2,10 @@ package app
 
 import (
 	"bytes"
+	"github.com/Chendemo12/flaskgo/internal/core"
+	"github.com/Chendemo12/functools/helper"
 	"github.com/gofiber/fiber/v2"
 	fiberu "github.com/gofiber/fiber/v2/utils"
-	"gitlab.cowave.com/gogo/flaskgo/internal/core"
-	"gitlab.cowave.com/gogo/functools/helper"
 	"strings"
 )
 

@@ -6,8 +6,8 @@
 package swag
 
 import (
+	"github.com/Chendemo12/flaskgo/internal/constant"
 	"github.com/gofiber/fiber/v2"
-	"gitlab.cowave.com/gogo/flaskgo/internal/constant"
 	"net/http"
 	"reflect"
 	"strconv"
