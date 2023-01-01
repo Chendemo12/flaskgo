@@ -3,22 +3,22 @@ package app
 import (
 	"github.com/Chendemo12/flaskgo/internal/core"
 	"github.com/Chendemo12/flaskgo/internal/mode"
-	"github.com/Chendemo12/flaskgo/internal/swag"
+	"github.com/Chendemo12/flaskgo/internal/openapi"
 	"github.com/Chendemo12/functools/python"
 	"net/http"
 	"strings"
 )
 
 var (
-	customError404Model      *swag.RouteModel = nil // 业务层面自定义的404 错误
-	validationErrorModel     *swag.RouteModel = nil // 422 表单验证错误模型
-	httpValidationErrorModel *swag.RouteModel = nil // 请求错误模型
+	customError404Model      *openapi.RouteModel = nil // 业务层面自定义的404 错误
+	validationErrorModel     *openapi.RouteModel = nil // 422 表单验证错误模型
+	httpValidationErrorModel *openapi.RouteModel = nil // 请求错误模型
 )
 
 func init() {
-	validationErrorModel = swag.RModelTransformer(ValidationError{})
-	customError404Model = swag.RModelTransformer(CustomError404{})
-	httpValidationErrorModel = swag.RModelTransformer(HTTPValidationError{})
+	validationErrorModel = openapi.RModelTransformer(ValidationError{})
+	customError404Model = openapi.RModelTransformer(CustomError404{})
+	httpValidationErrorModel = openapi.RModelTransformer(HTTPValidationError{})
 }
 
 type DebugMode struct {
@@ -27,13 +27,13 @@ type DebugMode struct {
 
 func (d DebugMode) Doc__() string { return "调试模式模型" }
 
-func MakeDefaultRespGroup(method string, model *swag.RouteResp) []*swag.RouteResp {
-	group := []*swag.RouteResp{
+func MakeDefaultRespGroup(method string, model *openapi.RouteResp) []*openapi.RouteResp {
+	group := []*openapi.RouteResp{
 		{
 			StatusCode: http.StatusNotFound,
-			Body: &swag.RouteModel{
-				Model:  swag.String,
-				Struct: swag.RModelField{},
+			Body: &openapi.RouteModel{
+				Model:  openapi.String,
+				Struct: openapi.RModelField{},
 			},
 		},
 	}
@@ -43,7 +43,7 @@ func MakeDefaultRespGroup(method string, model *swag.RouteResp) []*swag.RouteRes
 		group = append(group, model)
 
 	case http.MethodPost, http.MethodPatch, http.MethodPut:
-		group = append(group, model, &swag.RouteResp{ // 422请求参数校验错误返回实例
+		group = append(group, model, &openapi.RouteResp{ // 422请求参数校验错误返回实例
 			StatusCode: http.StatusUnprocessableEntity,
 			Body:       validationErrorModel,
 		})
@@ -58,21 +58,21 @@ func makeSwaggerDocs(f *FlaskGo) {
 		return
 	}
 
-	swag.AddModelDoc(validationErrorModel)
-	swag.AddModelDoc(httpValidationErrorModel)
-	swag.AddModelDoc(customError404Model)
+	openapi.AddModelDoc(validationErrorModel)
+	openapi.AddModelDoc(httpValidationErrorModel)
+	openapi.AddModelDoc(customError404Model)
 
 	// 存储全部的路由
-	routeInsGroups := make([]*swag.RouteInsGroup, 0)
+	routeInsGroups := make([]*openapi.RouteInsGroup, 0)
 
 	routesMap := make(map[string][]*Route)
 	for _, router := range f.APIRouters() {
 		for _, route := range router.Routes() {
 			// 挂载 请求体模型文档
-			swag.AddModelDoc(route.RequestModel)
+			openapi.AddModelDoc(route.RequestModel)
 
 			path := CombinePath(router.Prefix, route.RelativePath)
-			group := &swag.RouteInsGroup{Path: path}
+			group := &openapi.RouteInsGroup{Path: path}
 			routeInsGroups = append(routeInsGroups, group)
 			routesMap[path] = append(routesMap[path], route)
 		}
@@ -81,7 +81,7 @@ func makeSwaggerDocs(f *FlaskGo) {
 	// 扫描注册全部的请求头和响应体模型，以及路由对象
 	for path, routes := range routesMap {
 		for _, route := range routes {
-			ins := &swag.RouteInstance{
+			ins := &openapi.RouteInstance{
 				Method:       route.Method,
 				Path:         strings.Split(path, RouteSeparator)[0],
 				Summary:      route.Summary,
@@ -90,7 +90,7 @@ func makeSwaggerDocs(f *FlaskGo) {
 				PathFields:   route.PathFields,
 				QueryFields:  route.QueryModel,
 				RequestModel: route.RequestModel,
-				RespGroup: MakeDefaultRespGroup(route.Method, &swag.RouteResp{
+				RespGroup: MakeDefaultRespGroup(route.Method, &openapi.RouteResp{
 					Body:       route.ResponseModel,
 					StatusCode: http.StatusOK,
 				}),
@@ -105,10 +105,10 @@ func makeSwaggerDocs(f *FlaskGo) {
 	}
 
 	for _, group := range routeInsGroups {
-		swag.AddPathDoc(group)
+		openapi.AddPathDoc(group)
 	}
 
-	swag.RegisterSwagger(
+	openapi.RegisterSwagger(
 		f.engine, f.Title(),
 		f.Description(),
 		f.version+" | FlaskGo: "+Version,

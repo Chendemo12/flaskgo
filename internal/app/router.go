@@ -2,7 +2,7 @@ package app
 
 import (
 	"github.com/Chendemo12/flaskgo/internal/constant"
-	"github.com/Chendemo12/flaskgo/internal/swag"
+	"github.com/Chendemo12/flaskgo/internal/openapi"
 	"github.com/gofiber/fiber/v2"
 	"net/http"
 	"reflect"
@@ -34,16 +34,16 @@ func APIRouter(prefix string, tags []string) *Router {
 // Route 一个完整的路由对象，此对象会在程序启动时生成swagger文档
 // 其中相对路径Path不能重复，否则后者会覆盖前者
 type Route struct {
-	RequestModel  *swag.RouteModel // 请求体模型, 此模型恒 != nil
-	ResponseModel *swag.RouteModel // 响应模型,路由参数, 此模型恒 != nil
-	Method        string           // 请求方法
-	RelativePath  string           // 请求相对路由, 必定以/开头,路由参数
-	Summary       string           // 路由摘要,路由参数
-	Description   string           // 路由详细描述
+	RequestModel  *openapi.RouteModel // 请求体模型, 此模型恒 != nil
+	ResponseModel *openapi.RouteModel // 响应模型,路由参数, 此模型恒 != nil
+	Method        string              // 请求方法
+	RelativePath  string              // 请求相对路由, 必定以/开头,路由参数
+	Summary       string              // 路由摘要,路由参数
+	Description   string              // 路由详细描述
 	Tags          []string
-	PathFields    []*swag.QModel  // 路径参数
-	QueryModel    []*swag.QModel  // 查询参数
-	Handlers      []fiber.Handler // 路由处理钩子
+	PathFields    []*openapi.QModel // 路径参数
+	QueryModel    []*openapi.QModel // 查询参数
+	Handlers      []fiber.Handler   // 路由处理钩子
 	Dependencies  []HandlerFunc
 	deprecated    bool // 是否禁用此路由
 }
@@ -75,15 +75,15 @@ func (f *Route) SetDescription(description string) *Route {
 // SetQueryParams 设置查询参数,此空struct的每一个字段都将作为一个单独的查询参数
 // @param  m  any  查询参数对象
 func (f *Route) SetQueryParams(m any) *Route {
-	f.QueryModel = swag.QModelTransformer(m) // 转换为内部模型
+	f.QueryModel = openapi.QModelTransformer(m) // 转换为内部模型
 	return f
 }
 
 // SetRequestModel 设置请求体对象,此model应为一个空struct实例,而非指针类型,且仅"GET",http.MethodDelete有效
 // @param  m  any  请求体对象
-func (f *Route) SetRequestModel(m swag.BaseModelIface) *Route {
+func (f *Route) SetRequestModel(m openapi.BaseModelIface) *Route {
 	if f.Method != http.MethodGet && f.Method != http.MethodDelete {
-		f.RequestModel = swag.RModelTransformer(m)
+		f.RequestModel = openapi.RModelTransformer(m)
 	}
 	return f
 }
@@ -120,7 +120,8 @@ func (f *Router) Activate() *Router {
 func (f *Router) IncludeRouter(router *Router) *Router {
 	for _, route := range router.Routes() {
 		route.RelativePath = CombinePath(router.Prefix, route.RelativePath)
-		f.routes[route.RelativePath] = route
+		f.routes[route.RelativePath+RouteSeparator+route.Method] = route // 允许地址相同,方法不同的路由
+
 	}
 
 	return f
@@ -141,7 +142,7 @@ func (f *Router) SetDescription(relativePath, description string) *Router {
 
 func (f *Router) method(
 	method, relativePath, summary string,
-	queryModel any, requestModel, responseModel swag.BaseModelIface,
+	queryModel any, requestModel, responseModel openapi.BaseModelIface,
 	handler HandlerFunc,
 	additions []any,
 ) *Route {
@@ -174,10 +175,10 @@ func (f *Router) method(
 	route := &Route{
 		Method:        method,
 		RelativePath:  relativePath,
-		PathFields:    make([]*swag.QModel, 0),               // 路径参数
-		QueryModel:    swag.QModelTransformer(queryModel),    // 查询参数
-		RequestModel:  swag.RModelTransformer(requestModel),  // 请求体
-		ResponseModel: swag.RModelTransformer(responseModel), // 响应体
+		PathFields:    make([]*openapi.QModel, 0),               // 路径参数
+		QueryModel:    openapi.QModelTransformer(queryModel),    // 查询参数
+		RequestModel:  openapi.RModelTransformer(requestModel),  // 请求体
+		ResponseModel: openapi.RModelTransformer(responseModel), // 响应体
 		Summary:       summary,
 		Handlers:      handlers,
 		Dependencies:  make([]HandlerFunc, 0),
@@ -187,9 +188,9 @@ func (f *Router) method(
 	}
 
 	// 生成路径参数
-	if pp, found := swag.DoesPathParamsFound(route.RelativePath); found {
+	if pp, found := openapi.DoesPathParamsFound(route.RelativePath); found {
 		for name, required := range pp {
-			qm := &swag.QModel{Name: name, Required: required, InPath: true}
+			qm := &openapi.QModel{Name: name, Required: required, InPath: true}
 			if required {
 				qm.Tag = reflect.StructTag(`json:"` + name + `" validate:"required" binding:"required"`)
 			} else {
@@ -213,7 +214,7 @@ func (f *Router) method(
 // @param  handler        []HandlerFunc  路由处理方法
 // @param  addition       any            附加参数，如："deprecated"用于禁用此路由
 func (f *Router) GET(
-	path string, responseModel swag.BaseModelIface, summary string, handler HandlerFunc, addition ...any,
+	path string, responseModel openapi.BaseModelIface, summary string, handler HandlerFunc, addition ...any,
 ) *Route {
 	// 对于查询参数仅允许struct类型
 	return f.method(
@@ -231,7 +232,7 @@ func (f *Router) GET(
 // @param  handler        []HandlerFunc  路由处理方法
 // @param  addition       any            附加参数
 func (f *Router) DELETE(
-	path string, responseModel swag.BaseModelIface, summary string, handler HandlerFunc, addition ...any,
+	path string, responseModel openapi.BaseModelIface, summary string, handler HandlerFunc, addition ...any,
 ) *Route {
 	// 对于查询参数仅允许struct类型
 	return f.method(
@@ -250,7 +251,7 @@ func (f *Router) DELETE(
 // @param  addition       any            附加参数，如："deprecated"用于禁用此路由
 func (f *Router) POST(
 	path string,
-	requestModel, responseModel swag.BaseModelIface,
+	requestModel, responseModel openapi.BaseModelIface,
 	summary string,
 	handler HandlerFunc,
 	addition ...any,
@@ -265,7 +266,7 @@ func (f *Router) POST(
 // PATCH http patch method
 func (f *Router) PATCH(
 	path string,
-	requestModel, responseModel swag.BaseModelIface,
+	requestModel, responseModel openapi.BaseModelIface,
 	summary string,
 	handler HandlerFunc,
 	addition ...any,
@@ -280,7 +281,7 @@ func (f *Router) PATCH(
 // PUT http put method
 func (f *Router) PUT(
 	path string,
-	requestModel, responseModel swag.BaseModelIface,
+	requestModel, responseModel openapi.BaseModelIface,
 	summary string,
 	handler HandlerFunc,
 	addition ...any,

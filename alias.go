@@ -7,7 +7,7 @@ import (
 	"github.com/Chendemo12/flaskgo/internal/app"
 	"github.com/Chendemo12/flaskgo/internal/core"
 	"github.com/Chendemo12/flaskgo/internal/mode"
-	"github.com/Chendemo12/flaskgo/internal/swag"
+	"github.com/Chendemo12/flaskgo/internal/openapi"
 	"time"
 )
 
@@ -37,31 +37,31 @@ var (
 
 //goland:noinspection GoUnusedGlobalVariable
 var ( // types
-	Int8    = swag.Int8
-	Int16   = swag.Int16
-	Int32   = swag.Int32
-	Int64   = swag.Int64
-	Uint8   = swag.Uint8
-	Uint16  = swag.Uint16
-	Uint32  = swag.Uint32
-	Uint64  = swag.Uint64
-	Float32 = swag.Float32
-	Float64 = swag.Float64
-	String  = swag.String
-	Boolean = swag.Boolean
-	Bool    = swag.Boolean
-	Mapping = swag.Mapping
+	Int8    = openapi.Int8
+	Int16   = openapi.Int16
+	Int32   = openapi.Int32
+	Int64   = openapi.Int64
+	Uint8   = openapi.Uint8
+	Uint16  = openapi.Uint16
+	Uint32  = openapi.Uint32
+	Uint64  = openapi.Uint64
+	Float32 = openapi.Float32
+	Float64 = openapi.Float64
+	String  = openapi.String
+	Boolean = openapi.Boolean
+	Bool    = openapi.Boolean
+	Mapping = openapi.Mapping
 
 	Int     = Int32
 	Byte    = Uint8
 	Uint    = Uint32
 	Float   = Float64
-	Array   = swag.List
-	List    = swag.List
-	Ints    = &swag.RouteModel{Model: Int32, Struct: Int32, RetArray: true}
-	Bytes   = &swag.RouteModel{Model: Uint8, Struct: Uint8, RetArray: true}
-	Strings = &swag.RouteModel{Model: String, Struct: String, RetArray: true}
-	Floats  = &swag.RouteModel{Model: Float64, Struct: Float64, RetArray: true}
+	Array   = openapi.List
+	List    = openapi.List
+	Ints    = &openapi.RouteModel{Model: Int32, Struct: Int32, RetArray: true}
+	Bytes   = &openapi.RouteModel{Model: Uint8, Struct: Uint8, RetArray: true}
+	Strings = &openapi.RouteModel{Model: String, Struct: String, RetArray: true}
+	Floats  = &openapi.RouteModel{Model: Float64, Struct: Float64, RetArray: true}
 )
 
 //goland:noinspection GoUnusedGlobalVariable
@@ -86,8 +86,8 @@ type Router = app.Router
 type Response = app.Response
 type ResponseHeader = app.ResponseHeader
 type ValidationError = app.ValidationError
-type BaseModel = swag.BaseModel
-type BaseModelIface = swag.BaseModelIface
+type BaseModel = openapi.BaseModel
+type BaseModelIface = openapi.BaseModelIface
 
 //goland:noinspection GoUnusedGlobalVariable
 var (
@@ -102,7 +102,7 @@ var (
 	OKResponse              = app.OKResponse
 	ResourceNotFound        = app.ResourceNotFound
 	AdvancedResponse        = app.AdvancedResponse
-	StringsReverse          = swag.StringsReverse
+	StringsReverse          = openapi.StringsReverse
 )
 
 // DisableBaseRoutes 禁用基础路由

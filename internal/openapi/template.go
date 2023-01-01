@@ -1,4 +1,4 @@
-package swag
+package openapi
 
 import (
 	"bytes"
@@ -38,19 +38,18 @@ func createSwaggerRoutes(f *fiber.App, title string) {
 		return c.SendString(makeSwaggerUiHtml(title, openapiUrl, swaggerJsUrl, swaggerCssUrl, swaggerFaviconUrl))
 	})
 
-	// TODO：implement
 	// redoc 纯文档页面
 	f.Get("/redoc", func(c *fiber.Ctx) error {
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTML)
-		return c.SendString(makeSwaggerUiHtml(title, openapiUrl, swaggerJsUrl, swaggerCssUrl, swaggerFaviconUrl))
+		return c.SendString(makeRedocUiHtml(title, openapiUrl, redocJsUrl, redocFaviconUrl))
 	})
 
 	// openapi 获取路由定义
 	f.Get("/openapi.json", func(c *fiber.Ctx) error {
 		c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
-		return c.Status(fiber.StatusOK).SendStream(bytes.NewReader(templateBytes))
 		//return c.Status(fiber.StatusOK).SendString(templateString)
 		//return c.Status(fiber.StatusOK).JSON(template)
+		return c.Status(fiber.StatusOK).SendStream(bytes.NewReader(templateBytes))
 	})
 }
 

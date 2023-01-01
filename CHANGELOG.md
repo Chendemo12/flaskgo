@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 0.2.9 - (2023-01-01)
+
+### Feat
+
+- 新增`redoc`文档页面;
+
+### Fix
+
+- 修复`Router.IncludeRouter`覆盖同名路由的错误;
+
 ## 0.2.8 - (2022-11-01)
 
 ### Fix

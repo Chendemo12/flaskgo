@@ -12,7 +12,7 @@ package app
 import (
 	"github.com/Chendemo12/flaskgo/internal/core"
 	"github.com/Chendemo12/flaskgo/internal/mode"
-	"github.com/Chendemo12/flaskgo/internal/swag"
+	"github.com/Chendemo12/flaskgo/internal/openapi"
 	"github.com/Chendemo12/functools/python"
 	"github.com/Chendemo12/functools/zaplog"
 	"github.com/go-playground/validator/v10"
@@ -79,16 +79,16 @@ func (f *FlaskGo) mountBaseRoutes() {
 	// 注册最基础的路由
 	router := APIRouter("/api/base", []string{"Base"})
 	{
-		router.GET("/title", swag.String, "获取软件名", func(c *Context) any {
+		router.GET("/title", openapi.String, "获取软件名", func(c *Context) any {
 			return StringResponse(appEngine.title)
 		})
-		router.GET("/Description", swag.String, "获取软件描述信息", func(c *Context) any {
+		router.GET("/Description", openapi.String, "获取软件描述信息", func(c *Context) any {
 			return StringResponse(appEngine.Description())
 		})
-		router.GET("/version", swag.String, "获取软件版本号", func(c *Context) any {
+		router.GET("/version", openapi.String, "获取软件版本号", func(c *Context) any {
 			return StringResponse(appEngine.version)
 		})
-		router.GET("/heartbeat", swag.String, "心跳检测", func(c *Context) any {
+		router.GET("/heartbeat", openapi.String, "心跳检测", func(c *Context) any {
 			return StringResponse("pong")
 		})
 		router.GET("/debug", DebugMode{}, "获取调试开关", func(c *Context) any {

@@ -1,4 +1,4 @@
-package swag
+package openapi
 
 import (
 	"github.com/Chendemo12/flaskgo/internal/constant"
@@ -21,6 +21,8 @@ const (
 	swaggerCssUrl     = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui.css"
 	swaggerFaviconUrl = "https://fastapi.tiangolo.com/img/favicon.png"
 	swaggerJsUrl      = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-bundle.js"
+	redocJsUrl        = "https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"
+	redocFaviconUrl   = "https://fastapi.tiangolo.com/img/favicon.png"
 	openapiUrl        = "openapi.json"
 )
 

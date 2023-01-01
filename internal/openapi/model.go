@@ -1,9 +1,9 @@
-// Package swag
+// Package openapi
 //
 // defines.go: 自定义类型, 用于辅助自动生成swagger文档及参数校验;
 //
 // model.go: schema文档模型;
-package swag
+package openapi
 
 import (
 	"github.com/Chendemo12/flaskgo/internal/constant"
