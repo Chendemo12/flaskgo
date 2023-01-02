@@ -10,9 +10,10 @@
 package app
 
 import (
+	"context"
 	"github.com/Chendemo12/flaskgo/internal/core"
+	"github.com/Chendemo12/flaskgo/internal/godantic"
 	"github.com/Chendemo12/flaskgo/internal/mode"
-	"github.com/Chendemo12/flaskgo/internal/openapi"
 	"github.com/Chendemo12/functools/python"
 	"github.com/Chendemo12/functools/zaplog"
 	"github.com/go-playground/validator/v10"
@@ -51,8 +52,9 @@ type FlaskGo struct {
 	console     zaplog.ConsoleLogger // 控制台日志
 	logger      zaplog.Iface         // 日志对象，通常=Sugar(*zap.SugaredLogger已实现此接口)
 	isStarted   chan struct{}        // 标记程序是否完成启动
-	service     *Service             // 全局服务依赖
-	engine      *fiber.App           // fiber.App
+	background  context.Context
+	service     *Service   // 全局服务依赖
+	engine      *fiber.App // fiber.App
 	version     string
 	host        string
 	port        string
@@ -64,34 +66,35 @@ type FlaskGo struct {
 }
 
 // Title 应用程序名和日志文件名
-func (f *FlaskGo) Title() string { return f.title }
-
-// Version 版本号
+func (f *FlaskGo) Title() string   { return f.title }
+func (f *FlaskGo) Host() string    { return f.host }
+func (f *FlaskGo) Port() string    { return f.port }
 func (f *FlaskGo) Version() string { return f.version }
 
 // Description 描述信息，同时会显示在Swagger文档上
 func (f *FlaskGo) Description() string { return f.description }
-func (f *FlaskGo) Host() string        { return f.host }
-func (f *FlaskGo) Port() string        { return f.port }
+
+// Done 监听 FlaskGo 的关闭事件
+func (f *FlaskGo) Done() <-chan struct{} { return f.background.Done() }
 
 // mountBaseRoutes 创建基础路由
 func (f *FlaskGo) mountBaseRoutes() {
 	// 注册最基础的路由
 	router := APIRouter("/api/base", []string{"Base"})
 	{
-		router.GET("/title", openapi.String, "获取软件名", func(c *Context) any {
+		router.GET("/title", godantic.String, "获取软件名", func(c *Context) any {
 			return StringResponse(appEngine.title)
 		})
-		router.GET("/Description", openapi.String, "获取软件描述信息", func(c *Context) any {
+		router.GET("/Description", godantic.String, "获取软件描述信息", func(c *Context) any {
 			return StringResponse(appEngine.Description())
 		})
-		router.GET("/version", openapi.String, "获取软件版本号", func(c *Context) any {
+		router.GET("/version", godantic.String, "获取软件版本号", func(c *Context) any {
 			return StringResponse(appEngine.version)
 		})
-		router.GET("/heartbeat", openapi.String, "心跳检测", func(c *Context) any {
+		router.GET("/heartbeat", godantic.String, "心跳检测", func(c *Context) any {
 			return StringResponse("pong")
 		})
-		router.GET("/debug", DebugMode{}, "获取调试开关", func(c *Context) any {
+		router.GET("/debug", &DebugMode{}, "获取调试开关", func(c *Context) any {
 			return OKResponse(DebugMode{Mode: mode.GetMode()})
 		})
 	}
@@ -147,6 +150,8 @@ func (f *FlaskGo) initialize() *FlaskGo {
 
 	// 创建 fiber.App
 	f.engine = createFiberApp(f.title, f.version)
+	f.background = context.Background()
+
 	// 注册中间件
 	for i := 0; i < len(f.middlewares); i++ {
 		f.engine.Use(f.middlewares[i])
@@ -374,7 +379,9 @@ func (f *FlaskGo) Run(host, port string) {
 		log.Fatal(f.engine.Listen(net.JoinHostPort(f.host, f.port)))
 	}()
 
-	<-quit // 阻塞进程，直到接收到停止信号,准备关闭程序
+	<-quit              // 阻塞进程，直到接收到停止信号,准备关闭程序
+	f.background.Done() // 标记结束
+
 	// 执行关机前事件
 	for _, event := range f.events {
 		if event.Type == shutdownEvent {
@@ -387,13 +394,11 @@ func (f *FlaskGo) Run(host, port string) {
 	innerOutput("INFO", "Server exiting")
 }
 
-func GetFlaskGo() *FlaskGo { return appEngine }
-
 // NewFlaskGo 创建一个WEB服务
 // @param   title    string              Application  name
 // @param   version  string              Version
 // @param   debug    bool                是否开启调试模式
-// @param   service  CustomContextIface  custom  ServiceContext
+// @param   service  CustomContextIface  custom ServiceContext
 // @return  *FlaskGo flaskgo对象
 func NewFlaskGo(title, version string, debug bool, ctx CustomContextIface) *FlaskGo {
 	if debug {

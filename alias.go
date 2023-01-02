@@ -23,7 +23,6 @@ const (
 var (
 	NewDefaultFlaskGo = app.NewFlaskGo
 	NewFlaskGo        = app.NewFlaskGo
-	GetFlaskGo        = app.GetFlaskGo
 	APIRouter         = app.APIRouter
 	CombinePath       = app.CombinePath
 )

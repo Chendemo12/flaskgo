@@ -2,10 +2,13 @@ package openapi
 
 import (
 	"bytes"
+	"github.com/Chendemo12/flaskgo/internal/godantic"
 	"github.com/Chendemo12/flaskgo/internal/mode"
 	"github.com/Chendemo12/functools/helper"
 	"github.com/gofiber/fiber/v2"
 )
+
+type dict map[string]any
 
 const (
 	ModelsSelectorName = "schemas"
@@ -13,19 +16,70 @@ const (
 )
 
 var (
-	template      = dict{}            // swag文档模板
-	pathsMap      = map[string]dict{} // swag的路由文档
-	modelsDocMap  = map[string]dict{} // swag的模型描述
-	templateBytes = make([]byte, 0)   // swag文档模板字节表示
+	template      = dict{}              // swag文档模板
+	pathsMap      = map[string][]dict{} // swag的路由文档
+	modelsDocMap  = map[string]dict{}   // swag的模型描述
+	templateBytes = make([]byte, 0)     // swag文档模板字节表示
 )
 
-type dict map[string]any
+// 422 表单验证错误模型
+var validationErrorDefinition = dict{
+	"title": "ValidationError",
+	"type":  "object",
+	"properties": dict{
+		"loc": dict{
+			"title": "Location",
+			"type":  "array",
+			"items": dict{"anyOf": []map[string]string{{"type": "string"}, {"type": "integer"}}},
+		},
+		"msg":  dict{"title": "Message", "type": "string"},
+		"type": dict{"title": "Error Type", "type": "string"},
+	},
+	"required": []string{"loc", "msg", "type"},
+}
+
+// 请求体相应体错误消息
+var validationErrorResponseDefinition = dict{
+	"title":    "HTTPValidationError",
+	"type":     "object",
+	"required": []string{"detail"},
+	"properties": dict{
+		"detail": dict{
+			"title": "Detail",
+			"type":  "array",
+			"items": dict{"$ref": godantic.RefPrefix + "ValidationError"},
+		},
+	},
+}
+
+// 自定义错误消息
+var customErrorDefinition = dict{
+	"title":    "CustomValidationError",
+	"required": []string{"error_code"},
+	"type":     "object",
+	"properties": dict{
+		"error_code": dict{
+			"title":       "ErrorCode",
+			"type":        "string",
+			"required":    true,
+			"description": "ErrorCode",
+		},
+		"ValidationError": dict{
+			"$ref":        "#/components/schemas/ValidationError",
+			"title":       "ValidationError",
+			"type":        "object",
+			"required":    false,
+			"description": "ValidationError",
+		},
+		"description": "CustomValidationError",
+	},
+}
 
 // ------------------------------------------- 创建基础路由 -------------------------------------------
 
 func clearCacheMap() {
 	if !mode.IsDebug() {
-		pathsMap = make(map[string]dict, 0)
+		pathsMap = make(map[string][]dict, 0)
 		template = make(dict, 0)
 		modelsDocMap = make(map[string]dict, 0)
 	}
@@ -55,16 +109,13 @@ func createSwaggerRoutes(f *fiber.App, title string) {
 
 // ------------------------------------------- 创建默认基础路由 end -------------------------------------------
 
-func AddModelDoc(model *RouteModel) {
-	if model != nil && model.Model != nil {
-		modelsDocMap[model.FullName()] = model.Doc()
-	}
+func AddModelDoc(name string, schema map[string]any) {
+	modelsDocMap[name] = schema
 }
 
-func AddPathDoc(model *RouteInsGroup) {
-	if model != nil {
-		pathsMap[FastApiRoutePath(model.String())] = model.Swag()
-	}
+func AddPathDoc(path string, schema map[string]any) {
+	path = FastApiRoutePath(path)
+	pathsMap[path] = append(pathsMap[path], schema)
 }
 
 // RegisterSwagger 挂载swagger文档
@@ -81,8 +132,10 @@ func AddPathDoc(model *RouteInsGroup) {
 //
 // 其中 RouteModel 必须首先被生成。并通过 AddModelDoc 添加模型文档
 func RegisterSwagger(f *fiber.App, title, description, version string, license map[string]string) {
-	// ---------------------------- swagger routes ------------------------
 	modelsDocMap[String.String()] = String.Swag()
+	modelsDocMap["ValidationError"] = validationErrorDefinition
+	modelsDocMap["HTTPValidationError"] = validationErrorResponseDefinition
+	modelsDocMap["CustomValidationError"] = customErrorDefinition
 
 	// ---------------------------- swagger base info ------------------------
 	template["openapi"] = "3.0.2"
@@ -93,8 +146,21 @@ func RegisterSwagger(f *fiber.App, title, description, version string, license m
 		"version":     version,
 	}
 
+	// ---------------------------- swagger routes ------------------------
+	m := dict{}
+	for path, methods := range pathsMap {
+		routes := make(map[string]any, len(methods))
+		for i := 0; i < len(methods); i++ {
+			for k, v := range methods[i] {
+				routes[k] = v
+			}
+		}
+
+		m[path] = routes
+	}
+
+	template["paths"] = m
 	// ---------------------------- swagger descriptions ------------------------
-	template["paths"] = pathsMap
 	template["components"] = dict{ModelsSelectorName: modelsDocMap}
 
 	// 序列化文档后返回字节流

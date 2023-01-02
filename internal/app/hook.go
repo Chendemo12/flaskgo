@@ -131,12 +131,12 @@ func routeParamsValidate(ctx *Context, route *Route) *Response {
 	}
 
 	// 查询参数校验
-	for i := 0; i < len(route.QueryModel); i++ {
-		ctx.QueryFields[route.QueryModel[i].Name] = ctx.Context().Query(route.QueryModel[i].Name)
-		if route.QueryModel[i].IsRequired() && ctx.QueryFields[route.QueryModel[i].Name] == "" {
+	for i := 0; i < len(route.QueryFields); i++ {
+		ctx.QueryFields[route.QueryFields[i].Name] = ctx.Context().Query(route.QueryFields[i].Name)
+		if route.QueryFields[i].IsRequired() && ctx.QueryFields[route.QueryFields[i].Name] == "" {
 			// 但是此查询参数设置为必选
 			return ValidationErrorResponse(&ValidationError{
-				Loc:  []string{"query", route.QueryModel[i].Name},
+				Loc:  []string{"query", route.QueryFields[i].Name},
 				Msg:  "query must not be empty",
 				Type: "string",
 				Ctx:  nil,
