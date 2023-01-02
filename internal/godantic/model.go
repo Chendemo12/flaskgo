@@ -1,7 +1,6 @@
 package godantic
 
 import (
-	"github.com/Chendemo12/flaskgo/internal/constant"
 	"github.com/Chendemo12/functools/helper"
 	"github.com/Chendemo12/functools/structfuncs"
 	"reflect"
@@ -56,12 +55,14 @@ func In(elem any, list []any) bool {
 }
 
 type Field struct {
-	Name      string            `json:"name" description:"字段名称"`
-	Index     int               `json:"index" description:"当前字段所处的顺序"`
-	Type      string            `json:"type" description:"字段类型"`
-	Tag       reflect.StructTag `json:"tag" description:"字段标签"`
-	Exported  bool              `json:"exported" description:"是否是导出字段"`
-	Anonymous bool              `json:"anonymous" description:"是否是嵌入字段"`
+	Name        string            `json:"name" description:"字段名称"`
+	Index       int               `json:"index" description:"当前字段所处的顺序"`
+	Exported    bool              `json:"exported" description:"是否是导出字段"`
+	Anonymous   bool              `json:"anonymous" description:"是否是嵌入字段"`
+	Tag         reflect.StructTag `json:"tag" description:"字段标签"`
+	ItemRef     string            `description:"子元素类型, 仅Type=array/object时有效"`
+	Type        reflect.Type      `description:"字段类型"`
+	ReflectKind reflect.Kind      `description:"数据类型"`
 }
 
 // Schema 生成字段的详细描述信息
@@ -69,7 +70,7 @@ type Field struct {
 //	// 字段为结构体类型
 //
 //	"position_sat": {
-//		"$ref": "#/comonents/schemas/examle.PositionGeo",
+//		"$ref": "#/comonents/schemas/example.PositionGeo",
 //		"description": "position_sat",
 //		"required": false,
 //		"title": "position_sat",
@@ -101,14 +102,15 @@ type Field struct {
 //	}
 func (f *Field) Schema() (m map[string]any) {
 	// 最基础的属性，必须
+	tp := reflectKindToName(f.Type.Kind())
 	m = dict{
 		"title":       f.Name,
-		"type":        f.Type,
+		"type":        tp,
 		"required":    IsFieldRequired(f.Tag),
 		"description": QueryFieldTag(f.Tag, "description", f.Name),
 	}
 	// 生成默认值
-	if v := GetDefaultV(f.Tag, f.Type); v != nil {
+	if v := GetDefaultV(f.Tag, tp); v != nil {
 		m["default"] = v
 	}
 	// 生成字段的枚举值
@@ -117,8 +119,7 @@ func (f *Field) Schema() (m map[string]any) {
 	}
 
 	// 为不同的字段类型生成相应的描述
-	switch f.Type {
-
+	switch tp {
 	case IntegerName, NumberName: // 生成数字类型的最大最小值
 		if lt := QueryFieldTag(f.Tag, "lt", ""); lt != "" {
 			m["maximum"], _ = strconv.Atoi(lt)
@@ -141,7 +142,7 @@ func (f *Field) Schema() (m map[string]any) {
 			m["minimum"], _ = strconv.Atoi(gt)
 		}
 
-	case constant.StringName: // 生成字符串类型的最大最小长度
+	case StringName: // 生成字符串类型的最大最小长度
 		if lt := QueryFieldTag(f.Tag, "max", ""); lt != "" {
 			m["maxLength"], _ = strconv.Atoi(lt)
 		}
@@ -149,16 +150,16 @@ func (f *Field) Schema() (m map[string]any) {
 			m["minLength"], _ = strconv.Atoi(gt)
 		}
 
-	case constant.ArrayName:
+	case ArrayName:
 		// 为数组类型生成子类型描述
 		if f.ItemRef != "" {
-			if strings.HasPrefix(f.ItemRef, ModelsRefPrefix) { // 数组子元素为关联类型
+			if strings.HasPrefix(f.ItemRef, RefPrefix) { // 数组子元素为关联类型
 				m["items"] = map[string]string{"$ref": f.ItemRef}
 			} else { // 子元素为基本数据类型
 				m["items"] = map[string]string{"type": f.ItemRef}
 			}
 		} else { // 缺省为string
-			m["items"] = map[string]string{"type": constant.StringName}
+			m["items"] = map[string]string{"type": StringName}
 		}
 		// 限制数组的长度
 		if lt := QueryFieldTag(f.Tag, "max", ""); lt != "" {
@@ -168,7 +169,7 @@ func (f *Field) Schema() (m map[string]any) {
 			m["minLength"], _ = strconv.Atoi(gt)
 		}
 
-	case constant.ObjectName:
+	case ObjectName:
 		if f.ItemRef != "" { // 字段类型为自定义结构体，生成关联类型，此内部结构体已注册
 			m["$ref"] = f.ItemRef
 		}
@@ -179,11 +180,31 @@ func (f *Field) Schema() (m map[string]any) {
 	return
 }
 
+func (f *Field) SchemaName() string { return f.Name }
+
+func (f *Field) SchemaJson() string {
+	bytes, err := helper.DefaultJsonMarshal(f.Schema())
+	if err != nil {
+		return string(bytes)
+	} else {
+		return ""
+	}
+}
+
+// String 将结构体序列化为字符串
+func (f *Field) String() string {
+	if bytes, err := helper.DefaultJsonMarshal(f); err != nil {
+		return ""
+	} else {
+		return string(bytes)
+	}
+}
+
 type BaseModel struct {
-	once        *sync.Once        // 由于 Schema 方法必定最先被调用,因此在此内部实例
-	fields      map[string]*Field // 结构体字段
-	name        []string          // 结构体名称,包名+结构体名称
-	innerFields []map[string]any  // 内部字段
+	once        *sync.Once       // 由于 Schema 方法必定最先被调用,因此在此内部实例
+	fields      []*Field         // 结构体字段
+	name        []string         // 结构体名称,包名+结构体名称
+	innerFields []map[string]any // 内部字段
 }
 
 func (b *BaseModel) init() {
@@ -197,16 +218,15 @@ func (b *BaseModel) init() {
 	// 获取字段信息
 	for i := 0; i < v.NumField(); i++ {
 		field := at.Field(i)
-		b.fields[field.Name] = &Field{
+		b.fields = append(b.fields, &Field{
 			Index:     i,
 			Name:      field.Name,
 			Tag:       field.Tag,
 			Type:      field.Type,
 			Exported:  unicode.IsUpper(rune(field.Name[0])),
 			Anonymous: field.Anonymous,
-		}
+		})
 	}
-
 }
 
 // String 将结构体序列化为字符串
@@ -235,53 +255,53 @@ func (b *BaseModel) Dict(exclude []string, include map[string]any) (m map[string
 	// 实时反射取值
 	v := reflect.Indirect(reflect.ValueOf(b))
 
-	for name, field := range b.fields {
-		if !field.Exported { // 非导出字段
+	for i := 0; i < len(b.fields); i++ {
+		if !b.fields[i].Exported || b.fields[i].Anonymous { // 非导出字段
 			continue
 		}
 
-		if _, ok := excludeMap[name]; ok { // 此字段被排除
+		if _, ok := excludeMap[b.fields[i].Name]; ok { // 此字段被排除
 			continue
 		}
 
-		switch field.Type.Kind() { // 获取字段定义的类型
+		switch b.fields[i].Type.Kind() { // 获取字段定义的类型
 
 		case reflect.Array, reflect.Slice:
-			m[name] = v.Field(field.Index).Bytes()
+			m[b.fields[i].Name] = v.Field(b.fields[i].Index).Bytes()
 
 		case reflect.Uint8:
-			m[name] = byte(v.Field(field.Index).Uint())
+			m[b.fields[i].Name] = byte(v.Field(b.fields[i].Index).Uint())
 		case reflect.Uint16:
-			m[name] = uint16(v.Field(field.Index).Uint())
+			m[b.fields[i].Name] = uint16(v.Field(b.fields[i].Index).Uint())
 		case reflect.Uint32:
-			m[name] = uint32(v.Field(field.Index).Uint())
+			m[b.fields[i].Name] = uint32(v.Field(b.fields[i].Index).Uint())
 		case reflect.Uint64, reflect.Uint:
-			m[name] = v.Field(field.Index).Uint()
+			m[b.fields[i].Name] = v.Field(b.fields[i].Index).Uint()
 
 		case reflect.Int8:
-			m[name] = int8(v.Field(field.Index).Int())
+			m[b.fields[i].Name] = int8(v.Field(b.fields[i].Index).Int())
 		case reflect.Int16:
-			m[name] = int16(v.Field(field.Index).Int())
+			m[b.fields[i].Name] = int16(v.Field(b.fields[i].Index).Int())
 		case reflect.Int32:
-			m[name] = int32(v.Field(field.Index).Int())
+			m[b.fields[i].Name] = int32(v.Field(b.fields[i].Index).Int())
 		case reflect.Int64, reflect.Int:
-			m[name] = v.Field(field.Index).Int()
+			m[b.fields[i].Name] = v.Field(b.fields[i].Index).Int()
 
 		case reflect.Float32:
-			m[name] = float32(v.Field(field.Index).Float())
+			m[b.fields[i].Name] = float32(v.Field(b.fields[i].Index).Float())
 		case reflect.Float64:
-			m[name] = v.Field(field.Index).Float()
+			m[b.fields[i].Name] = v.Field(b.fields[i].Index).Float()
 
 		case reflect.Struct, reflect.Interface, reflect.Map:
-			m[name] = v.Field(field.Index).Interface()
+			m[b.fields[i].Name] = v.Field(b.fields[i].Index).Interface()
 
 		case reflect.String:
-			m[name] = v.Field(field.Index).String()
+			m[b.fields[i].Name] = v.Field(b.fields[i].Index).String()
 
 		case reflect.Pointer:
-			m[name] = v.Field(field.Index).Pointer()
+			m[b.fields[i].Name] = v.Field(b.fields[i].Index).Pointer()
 		case reflect.Bool:
-			m[name] = v.Field(field.Index).Bool()
+			m[b.fields[i].Name] = v.Field(b.fields[i].Index).Bool()
 		}
 
 	}
@@ -335,7 +355,24 @@ func (b *BaseModel) Schema() (m map[string]any) {
 		b.once = &sync.Once{}
 	}
 	b.once.Do(b.init)
-	// TODO: NotImlemented
+
+	m = dict{"title": b.name[1], "type": "object", "description": b.SchemaDesc()}
+	required := make([]string, 0, len(b.fields))
+	properties := make(map[string]any, len(b.fields))
+
+	for i := 0; i < len(b.fields); i++ {
+		if !b.fields[i].Exported || b.fields[i].Anonymous { // 非导出字段
+			continue
+		}
+
+		properties[b.fields[i].SchemaName()] = b.fields[i].Schema()
+		if IsFieldRequired(b.fields[i].Tag) {
+			required = append(required, b.fields[i].SchemaName())
+		}
+	}
+
+	m["properties"], m["required"] = properties, required
+
 	return
 }
 
@@ -355,7 +392,14 @@ func (b *BaseModel) SchemaName(exclude ...bool) string {
 }
 
 // SchemaJson 输出为OpenAPI文档模型,字符串格式
-func (b *BaseModel) SchemaJson() string { return "" }
+func (b *BaseModel) SchemaJson() string {
+	bytes, err := helper.DefaultJsonMarshal(b.Schema())
+	if err != nil {
+		return string(bytes)
+	} else {
+		return ""
+	}
+}
 
 // SchemaDesc 结构体文档注释
 func (b *BaseModel) SchemaDesc() string { return "BaseModel" }

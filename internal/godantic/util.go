@@ -1,7 +1,6 @@
 package godantic
 
 import (
-	"github.com/Chendemo12/flaskgo/internal/constant"
 	"reflect"
 	"strconv"
 	"strings"
@@ -14,18 +13,18 @@ func reflectKindToName(kind reflect.Kind) (name string) {
 	switch kind {
 
 	case reflect.Array, reflect.Slice, reflect.Chan:
-		name = constant.ArrayName
+		name = ArrayName
 	case reflect.String:
-		name = constant.StringName
+		name = StringName
 	case reflect.Bool:
-		name = constant.BooleanName
+		name = BooleanName
 	default:
 		if reflect.Bool < kind && kind <= reflect.Uint64 {
-			name = constant.IntegerName
+			name = IntegerName
 		} else if reflect.Float32 <= kind && kind <= reflect.Complex128 {
-			name = constant.NumberName
+			name = NumberName
 		} else {
-			name = constant.ObjectName
+			name = ObjectName
 		}
 	}
 
@@ -51,10 +50,10 @@ func IsFieldRequired(tag reflect.StructTag) bool {
 func DoesPathParamsFound(path string) (map[string]bool, bool) {
 	pathParameters := make(map[string]bool, 0)
 	// 查找路径中的参数
-	for _, p := range strings.Split(path, constant.PathSeparator) {
-		if strings.HasPrefix(p, constant.PathParamPrefix) {
+	for _, p := range strings.Split(path, PathSeparator) {
+		if strings.HasPrefix(p, PathParamPrefix) {
 			// 识别到路径参数
-			if strings.HasSuffix(p, constant.OptionalPathParamSuffix) {
+			if strings.HasSuffix(p, OptionalPathParamSuffix) {
 				// 可选路径参数
 				pathParameters[p[1:len(p)-1]] = false
 			} else {
@@ -75,11 +74,11 @@ func GetDefaultV(tag reflect.StructTag, swagType string) (v any) {
 
 		case "string":
 			v = defaultV
-		case constant.IntegerName:
+		case IntegerName:
 			v, _ = strconv.Atoi(defaultV)
-		case constant.NumberName:
+		case NumberName:
 			v, _ = strconv.ParseFloat(defaultV, 64)
-		case constant.BooleanName:
+		case BooleanName:
 			v, _ = strconv.ParseBool(defaultV)
 		default:
 			v = defaultV
@@ -93,7 +92,7 @@ func IsArray(object any) bool {
 	if object == nil {
 		return false
 	}
-	return reflectKindToName(reflect.TypeOf(object).Kind()) == constant.ArrayName
+	return reflectKindToName(reflect.TypeOf(object).Kind()) == ArrayName
 }
 
 // QueryFieldTag 查找struct字段的Tag
