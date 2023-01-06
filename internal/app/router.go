@@ -3,7 +3,6 @@ package app
 import (
 	"github.com/Chendemo12/flaskgo/internal/constant"
 	"github.com/Chendemo12/flaskgo/internal/godantic"
-	"github.com/Chendemo12/flaskgo/internal/openapi"
 	"github.com/gofiber/fiber/v2"
 	"net/http"
 	"reflect"
@@ -176,7 +175,7 @@ func (f *Router) method(
 	}
 
 	// 生成路径参数
-	if pp, found := openapi.DoesPathParamsFound(route.RelativePath); found {
+	if pp, found := DoesPathParamsFound(route.RelativePath); found {
 		for name, required := range pp {
 			qm := &godantic.QModel{Name: name, Required: required, InPath: true}
 			if required {

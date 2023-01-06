@@ -6,7 +6,6 @@
 package openapi
 
 import (
-	"github.com/Chendemo12/flaskgo/internal/constant"
 	"github.com/gofiber/fiber/v2"
 	"net/http"
 	"reflect"
@@ -73,7 +72,7 @@ func (m RModel) Swag() (mp map[string]any) {
 	fields := make(dict, 0)       // 属性字段
 	// 字段详细描述信息中的 "required"属性 为 openapi 规范要求，用于在字段胖显式标明 ”字段必须“
 	// 与此对应的为 模型详细信息中的 "required"数组为 FastApi 文档的特殊标记，用于在必须字段未填写便提交请求时，弹出 “未填提示”
-	mp = dict{"title": m.Title(), "required": &required, "type": constant.ObjectName, "properties": &fields}
+	mp = dict{"title": m.Title(), "required": &required, "type": godantic.ObjectName, "properties": &fields}
 
 	if m.Description == "" {
 		mp["description"] = strings.ToLower(m.Name)
@@ -163,7 +162,7 @@ func (p RModelField) Swag() (mp map[string]any) {
 	// 为不同的字段类型生成相应的描述
 	switch p.Type {
 
-	case constant.IntegerName, constant.NumberName: // 生成数字类型的最大最小值
+	case godantic.IntegerName, godantic.NumberName: // 生成数字类型的最大最小值
 		if lt := QueryFieldTag(p.Tag, "lt", ""); lt != "" {
 			mp["maximum"], _ = strconv.Atoi(lt)
 		}
@@ -185,7 +184,7 @@ func (p RModelField) Swag() (mp map[string]any) {
 			mp["minimum"], _ = strconv.Atoi(gt)
 		}
 
-	case constant.StringName: // 生成字符串类型的最大最小长度
+	case godantic.StringName: // 生成字符串类型的最大最小长度
 		if lt := QueryFieldTag(p.Tag, "max", ""); lt != "" {
 			mp["maxLength"], _ = strconv.Atoi(lt)
 		}
@@ -193,7 +192,7 @@ func (p RModelField) Swag() (mp map[string]any) {
 			mp["minLength"], _ = strconv.Atoi(gt)
 		}
 
-	case constant.ArrayName:
+	case godantic.ArrayName:
 		// 为数组类型生成子类型描述
 		if p.ItemRef != "" {
 			if strings.HasPrefix(p.ItemRef, ModelsRefPrefix) { // 数组子元素为关联类型
@@ -202,7 +201,7 @@ func (p RModelField) Swag() (mp map[string]any) {
 				mp["items"] = map[string]string{"type": p.ItemRef}
 			}
 		} else { // 缺省为string
-			mp["items"] = map[string]string{"type": constant.StringName}
+			mp["items"] = map[string]string{"type": godantic.StringName}
 		}
 		// 限制数组的长度
 		if lt := QueryFieldTag(p.Tag, "max", ""); lt != "" {
@@ -212,7 +211,7 @@ func (p RModelField) Swag() (mp map[string]any) {
 			mp["minLength"], _ = strconv.Atoi(gt)
 		}
 
-	case constant.ObjectName:
+	case godantic.ObjectName:
 		if p.ItemRef != "" { // 字段类型为自定义结构体，生成关联类型，此内部结构体已注册
 			mp["$ref"] = p.ItemRef
 		}
@@ -253,14 +252,14 @@ func (q QModel) Swag() (mp map[string]any) {
 	if q.InPath { // 作为路径参数
 		mp = dict{
 			"name":     q.Name,
-			"schema":   dict{"title": q.Title(), "type": constant.StringName},
+			"schema":   dict{"title": q.Title(), "type": godantic.StringName},
 			"required": q.Required,
 			"in":       "path",
 		}
 	} else {
 		mp = dict{
 			"name":        QueryJsonName(q.Tag, q.Title()),
-			"schema":      dict{"title": q.Title(), "type": constant.StringName},
+			"schema":      dict{"title": q.Title(), "type": godantic.StringName},
 			"required":    q.IsRequired(),
 			"description": QueryFieldTag(q.Tag, "description", q.Name),
 			"in":          "query",
@@ -292,7 +291,7 @@ func (r RouteModel) Doc() (mp map[string]any) { return r.Model.Swag() }
 func (r RouteModel) Schema() (mp map[string]any) {
 	if r.RetArray {
 		mp = dict{
-			"type":  constant.ArrayName,
+			"type":  godantic.ArrayName,
 			"items": map[string]string{"$ref": ModelsRefPrefix + r.Model.String()},
 		}
 	} else {

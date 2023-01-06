@@ -45,25 +45,6 @@ func IsFieldRequired(tag reflect.StructTag) bool {
 	return false
 }
 
-// DoesPathParamsFound 是否查找到路径参数
-// @param  path  string  路由
-func DoesPathParamsFound(path string) (map[string]bool, bool) {
-	pathParameters := make(map[string]bool, 0)
-	// 查找路径中的参数
-	for _, p := range strings.Split(path, PathSeparator) {
-		if strings.HasPrefix(p, PathParamPrefix) {
-			// 识别到路径参数
-			if strings.HasSuffix(p, OptionalPathParamSuffix) {
-				// 可选路径参数
-				pathParameters[p[1:len(p)-1]] = false
-			} else {
-				pathParameters[p[1:]] = true
-			}
-		}
-	}
-	return pathParameters, len(pathParameters) > 0
-}
-
 func GetDefaultV(tag reflect.StructTag, swagType string) (v any) {
 	defaultV := QueryFieldTag(tag, "default", "")
 

@@ -3,6 +3,7 @@ package openapi
 import (
 	"errors"
 	"github.com/Chendemo12/flaskgo/internal/constant"
+	"github.com/Chendemo12/flaskgo/internal/godantic"
 	"reflect"
 	"strconv"
 	"strings"
@@ -116,7 +117,7 @@ func innerStructSchema(rt reflect.Type) *RModel {
 				elemType := reflectKindToName(field.Type.Elem().Kind())
 
 				switch elemType {
-				case constant.ObjectName, constant.ArrayName:
+				case godantic.ObjectName, godantic.ArrayName:
 					// 对于 []struct{} 类型的字段，关联其模型连接
 					modelField.ItemRef = ModelsRefPrefix + field.Type.Elem().String()
 				default:
@@ -143,18 +144,18 @@ func reflectKindToName(kind reflect.Kind) (name string) {
 	switch kind {
 
 	case reflect.Array, reflect.Slice, reflect.Chan:
-		name = constant.ArrayName
+		name = godantic.ArrayName
 	case reflect.String:
-		name = constant.StringName
+		name = godantic.StringName
 	case reflect.Bool:
-		name = constant.BooleanName
+		name = godantic.BooleanName
 	default:
 		if reflect.Bool < kind && kind <= reflect.Uint64 {
-			name = constant.IntegerName
+			name = godantic.IntegerName
 		} else if reflect.Float32 <= kind && kind <= reflect.Complex128 {
-			name = constant.NumberName
+			name = godantic.NumberName
 		} else {
-			name = constant.ObjectName
+			name = godantic.ObjectName
 		}
 	}
 
@@ -175,25 +176,6 @@ func IsFieldRequired(tag reflect.StructTag) bool {
 	return false
 }
 
-// DoesPathParamsFound 是否查找到路径参数
-// @param  path  string  路由
-func DoesPathParamsFound(path string) (map[string]bool, bool) {
-	pathParameters := make(map[string]bool, 0)
-	// 查找路径中的参数
-	for _, p := range strings.Split(path, constant.PathSeparator) {
-		if strings.HasPrefix(p, constant.PathParamPrefix) {
-			// 识别到路径参数
-			if strings.HasSuffix(p, constant.OptionalPathParamSuffix) {
-				// 可选路径参数
-				pathParameters[p[1:len(p)-1]] = false
-			} else {
-				pathParameters[p[1:]] = true
-			}
-		}
-	}
-	return pathParameters, len(pathParameters) > 0
-}
-
 func GetDefaultV(tag reflect.StructTag, swagType string) (v any) {
 	defaultV := QueryFieldTag(tag, "default", "")
 
@@ -204,11 +186,11 @@ func GetDefaultV(tag reflect.StructTag, swagType string) (v any) {
 
 		case "string":
 			v = defaultV
-		case constant.IntegerName:
+		case godantic.IntegerName:
 			v, _ = strconv.Atoi(defaultV)
-		case constant.NumberName:
+		case godantic.NumberName:
 			v, _ = strconv.ParseFloat(defaultV, 64)
-		case constant.BooleanName:
+		case godantic.BooleanName:
 			v, _ = strconv.ParseBool(defaultV)
 		default:
 			v = defaultV
@@ -222,7 +204,7 @@ func IsArray(object any) bool {
 	if object == nil {
 		return false
 	}
-	return reflectKindToName(reflect.TypeOf(object).Kind()) == constant.ArrayName
+	return reflectKindToName(reflect.TypeOf(object).Kind()) == godantic.ArrayName
 }
 
 // QueryFieldTag 查找struct字段的Tag

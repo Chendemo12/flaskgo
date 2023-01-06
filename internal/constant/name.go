@@ -6,12 +6,3 @@ const (
 	PathSeparator           = "/" // 路径分隔符
 	OptionalPathParamSuffix = "?" // 可选路径参数结束字符
 )
-
-const (
-	IntegerName = "integer"
-	NumberName  = "number"
-	StringName  = "string"
-	ArrayName   = "array"
-	ObjectName  = "object"
-	BooleanName = "boolean"
-)

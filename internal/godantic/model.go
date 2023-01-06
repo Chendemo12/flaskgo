@@ -12,57 +12,16 @@ import (
 
 type dict map[string]any
 
-type Iface interface {
-	// String 将结构体序列化为字符串
-	String() string
-	// Map 将结构体转换为字典视图
-	Map() (m map[string]any)
-	// Dict 将结构体转换为字典视图，并允许过滤一些字段或添加一些键值对到字典中
-	Dict(exclude []string, include map[string]any) (m map[string]any)
-	// Exclude 将结构体转换为字典视图，并过滤一些字段
-	Exclude(exclude ...string) (m map[string]any)
-	// Include 将结构体转换为字典视图，并允许添加一些键值对到字典中
-	Include(include map[string]any) (m map[string]any)
-	// Schema 输出为OpenAPI文档模型,字典格式
-	Schema() (m map[string]any)
-	// SchemaName 获取结构体的名称,默认包含包名
-	SchemaName(exclude ...bool) string
-	// SchemaJson 输出为OpenAPI文档模型,字符串格式
-	SchemaJson() string
-	// SchemaDesc 结构体文档注释
-	SchemaDesc() string
-	// InnerSchema 内部字段模型文档, 全名:文档
-	InnerSchema() (m map[string]map[string]any)
-	// Validate 检验实例是否符合tag要求
-	Validate(stc any) []*ValidationError
-	// ParseRaw 从原始字节流中解析结构体对象
-	ParseRaw(stc []byte) []*ValidationError
-	// Copy 拷贝一个新的空实例对象
-	Copy() any
-}
-
-// In 判断一个元素是否在一个切片内
-// @param   elem  any    元素
-// @param   list  []any  目标切片
-// @return  bool true if in the list
-func In(elem any, list []any) bool {
-	for i := 0; i < len(list); i++ {
-		if list[i] == elem {
-			return true
-		}
-	}
-	return false
-}
-
+// Field 此数据模型的字段类型,对于 BaseModel 其字段仍然可能会 BaseModel,
+// 但此类型不再递归记录,仅记录一个关联模型为基本
 type Field struct {
-	Name        string            `json:"name" description:"字段名称"`
-	Index       int               `json:"index" description:"当前字段所处的顺序"`
-	Exported    bool              `json:"exported" description:"是否是导出字段"`
-	Anonymous   bool              `json:"anonymous" description:"是否是嵌入字段"`
-	Tag         reflect.StructTag `json:"tag" description:"字段标签"`
-	ItemRef     string            `description:"子元素类型, 仅Type=array/object时有效"`
-	Type        reflect.Type      `description:"字段类型"`
-	ReflectKind reflect.Kind      `description:"数据类型"`
+	Name      string            `json:"name" description:"字段名称"`
+	Index     int               `json:"index" description:"当前字段所处的序号"`
+	Exported  bool              `json:"exported" description:"是否是导出字段"`
+	Anonymous bool              `json:"anonymous" description:"是否是嵌入字段"`
+	Tag       reflect.StructTag `json:"tag" description:"字段标签"`
+	ItemRef   string            `description:"子元素类型, 仅Type=array/object时有效"`
+	Type      reflect.Type      `description:"字段类型"`
 }
 
 // Schema 生成字段的详细描述信息
@@ -70,35 +29,35 @@ type Field struct {
 //	// 字段为结构体类型
 //
 //	"position_sat": {
-//		"$ref": "#/comonents/schemas/example.PositionGeo",
-//		"description": "position_sat",
-//		"required": false,
 //		"title": "position_sat",
 //		"type": "object"
+//		"description": "position_sat",
+//		"required": false,
+//		"$ref": "#/comonents/schemas/example.PositionGeo",
 //	}
 //
 //	// 字段为数组类型, 数组元素为基本类型
 //
 //	"traffic_timeslot": {
+//		"title": "traffic_timeslot",
+//		"type": "array"
 //		"description": "业务时隙编号数组",
+//		"required": false,
 //		"items": {
 //			"type": "integer"
 //		},
-//		"required": false,
-//		"title": "traffic_timeslot",
-//		"type": "array"
 //	}
 //
 //	// 字段为数组类型, 数组元素为自定义结构体类型
 //
 //	"Detail": {
+//		"title": "Detail",
+//		"type": "array"
 //		"description": "Detail",
+//		"required": true,
 //		"items": {
 //			"$ref": "#/comonents/schemas/ValidationError"
 //		},
-//		"required": true,
-//		"title": "Detail",
-//		"type": "array"
 //	}
 func (f *Field) Schema() (m map[string]any) {
 	// 最基础的属性，必须
@@ -106,8 +65,8 @@ func (f *Field) Schema() (m map[string]any) {
 	m = dict{
 		"title":       f.Name,
 		"type":        tp,
-		"required":    IsFieldRequired(f.Tag),
-		"description": QueryFieldTag(f.Tag, "description", f.Name),
+		"required":    f.IsRequired(),
+		"description": f.SchemaDesc(),
 	}
 	// 生成默认值
 	if v := GetDefaultV(f.Tag, tp); v != nil {
@@ -180,8 +139,16 @@ func (f *Field) Schema() (m map[string]any) {
 	return
 }
 
-func (f *Field) SchemaName() string { return f.Name }
+// SchemaName swagger文档字段名
+func (f *Field) SchemaName(exclude ...bool) string { return f.Name }
 
+// SchemaDesc 字段注释说明
+func (f *Field) SchemaDesc() string { return QueryFieldTag(f.Tag, "description", f.Name) }
+
+// SchemaType 模型类型
+func (f *Field) SchemaType() string { return reflectKindToName(f.Type.Kind()) }
+
+// SchemaJson swagger文档字符串格式
 func (f *Field) SchemaJson() string {
 	bytes, err := helper.DefaultJsonMarshal(f.Schema())
 	if err != nil {
@@ -191,20 +158,24 @@ func (f *Field) SchemaJson() string {
 	}
 }
 
-// String 将结构体序列化为字符串
-func (f *Field) String() string {
-	if bytes, err := helper.DefaultJsonMarshal(f); err != nil {
-		return ""
-	} else {
-		return string(bytes)
-	}
+// IsRequired 字段是否必须
+func (f *Field) IsRequired() bool { return f.Exported && IsFieldRequired(f.Tag) }
+
+// IsArray 字段是否是数组类型
+func (f *Field) IsArray() bool { return reflectKindToName(f.Type.Kind()) == ArrayName }
+
+// InnerSchema 内部字段模型文档, 全名:文档
+func (f *Field) InnerSchema() (m map[string]map[string]any) {
+	m = make(map[string]map[string]any)
+	return
 }
 
+// BaseModel 基本数据模型, 对于上层的 app.Route 其请求和相应体都应为继承此结构体的结构体
 type BaseModel struct {
-	once        *sync.Once       // 由于 Schema 方法必定最先被调用,因此在此内部实例
-	fields      []*Field         // 结构体字段
-	name        []string         // 结构体名称,包名+结构体名称
-	innerFields []map[string]any // 内部字段
+	once        *sync.Once `description:"由于 SchemaName 方法必定最先被调用,因此在此内部实例"`
+	fields      []*Field   `description:"结构体字段"`
+	name        []string   `description:"结构体名称,包名+结构体名称"`
+	innerFields []*Field   `description:"内部字段"`
 }
 
 func (b *BaseModel) init() {
@@ -213,11 +184,12 @@ func (b *BaseModel) init() {
 
 	// 获取包名
 	b.name = []string{at.Elem().Name(), at.Elem().String()}
-	b.innerFields = make([]map[string]any, 0, v.NumField())
+	b.innerFields = make([]*Field, 0)
 
 	// 获取字段信息
 	for i := 0; i < v.NumField(); i++ {
 		field := at.Field(i)
+		// TODO: 处理嵌入式结构体
 		b.fields = append(b.fields, &Field{
 			Index:     i,
 			Name:      field.Name,
@@ -328,35 +300,31 @@ func (b *BaseModel) Include(include map[string]any) (m map[string]any) {
 // Schema 输出为OpenAPI文档模型,字典格式
 //
 //	{
+//		"title": "examle.MyTimeslot",
+//		"type": "object"
 //		"description": "examle.mytimeslot",
+//		"required": [],
 //		"properties": {
 //			"control_timeslot": {
+//				"title": "control_timeslot",
+//				"type": "array"
 //				"description": "控制时隙编号数组",
+//				"required": false,
 //				"items": {
 //					"type": "integer"
 //				},
-//				"required": false,
-//				"title": "control_timeslot",
-//				"type": "array"
 //			},
 //			"superframe_count": {
-//				"description": "超帧计数",
-//				"required": false,
 //				"title": "superframe_count",
 //				"type": "integer"
+//				"description": "超帧计数",
+//				"required": false,
 //			},
-//
-//		"required": [],
-//		"title": "examle.MyTimeslot",
-//		"type": "object"
+//		},
 //	},
 func (b *BaseModel) Schema() (m map[string]any) {
-	if b.once == nil {
-		b.once = &sync.Once{}
-	}
-	b.once.Do(b.init)
+	m = dict{"title": b.SchemaName(), "type": b.SchemaType(), "description": b.SchemaDesc()}
 
-	m = dict{"title": b.name[1], "type": "object", "description": b.SchemaDesc()}
 	required := make([]string, 0, len(b.fields))
 	properties := make(map[string]any, len(b.fields))
 
@@ -366,12 +334,12 @@ func (b *BaseModel) Schema() (m map[string]any) {
 		}
 
 		properties[b.fields[i].SchemaName()] = b.fields[i].Schema()
-		if IsFieldRequired(b.fields[i].Tag) {
+		if b.fields[i].IsRequired() {
 			required = append(required, b.fields[i].SchemaName())
 		}
 	}
 
-	m["properties"], m["required"] = properties, required
+	m["required"], m["properties"] = required, properties
 
 	return
 }
@@ -391,6 +359,12 @@ func (b *BaseModel) SchemaName(exclude ...bool) string {
 	}
 }
 
+// SchemaDesc 结构体文档注释
+func (b *BaseModel) SchemaDesc() string { return "BaseModel" }
+
+// SchemaType 模型类型
+func (b *BaseModel) SchemaType() string { return ObjectName }
+
 // SchemaJson 输出为OpenAPI文档模型,字符串格式
 func (b *BaseModel) SchemaJson() string {
 	bytes, err := helper.DefaultJsonMarshal(b.Schema())
@@ -401,26 +375,32 @@ func (b *BaseModel) SchemaJson() string {
 	}
 }
 
-// SchemaDesc 结构体文档注释
-func (b *BaseModel) SchemaDesc() string { return "BaseModel" }
-
 // InnerSchema 内部字段模型文档
-func (b *BaseModel) InnerSchema() (m map[string]any) {
-	return nil
+func (b *BaseModel) InnerSchema() (m map[string]map[string]any) {
+	for i := 0; i < len(b.innerFields); i++ {
+		m[b.innerFields[i].SchemaName()] = b.innerFields[i].Schema()
+	}
+
+	return
 }
+
+func (b *BaseModel) IsRequired() bool { return true }
 
 // Validate 检验实例是否符合tag要求
 func (b *BaseModel) Validate(stc any) []*ValidationError {
+	// TODO: NotImplemented
 	return nil
 }
 
 // ParseRaw 从原始字节流中解析结构体对象
 func (b *BaseModel) ParseRaw(stc []byte) []*ValidationError {
+	// TODO: NotImplemented
 	return nil
 }
 
 // Copy 拷贝一个新的空实例对象
 func (b *BaseModel) Copy() any {
+	// TODO: NotImplemented
 	return nil
 }
 
@@ -447,13 +427,13 @@ func (v *ValidationError) Map() (m map[string]any) {
 
 // QModel 查询参数或路径参数
 type QModel struct {
-	Name     string            // 字段名称
-	Tag      reflect.StructTag // binding:"required" 标记一个字段是必须的
-	Required bool              // 是否必须
-	InPath   bool              // 是否是路径参数
+	Name     string            `json:"name,omitempty" description:"字段名称"`
+	Required bool              `json:"required,omitempty" description:"是否必须"`
+	InPath   bool              `json:"inPath,omitempty" description:"是否是路径参数"`
+	Tag      reflect.StructTag `json:"tag,omitempty" description:"TAG"`
 }
 
-// Schema
+// Schema 输出为OpenAPI文档模型,字典格式
 //
 //	{
 //		"required": true,
@@ -468,3 +448,37 @@ type QModel struct {
 func (q *QModel) Schema() (m map[string]any) {
 	return
 }
+
+// SchemaName 获取结构体的名称,默认包含包名
+func (q *QModel) SchemaName(exclude ...bool) string { return q.Name }
+
+// SchemaDesc 结构体文档注释
+func (q *QModel) SchemaDesc() string {
+	if q.InPath {
+		return "field in path"
+	} else {
+		return "field in query"
+	}
+}
+
+// SchemaType 模型类型
+func (q *QModel) SchemaType() string { return StringName }
+
+// SchemaJson 输出为OpenAPI文档模型,字符串格式
+func (q *QModel) SchemaJson() string {
+	bytes, err := helper.DefaultJsonMarshal(q.Schema())
+	if err != nil {
+		return string(bytes)
+	} else {
+		return ""
+	}
+}
+
+// InnerSchema 内部字段模型文档, 全名:文档
+func (q *QModel) InnerSchema() (m map[string]map[string]any) {
+	m = make(map[string]map[string]any)
+	return
+}
+
+// IsRequired 是否必须
+func (q *QModel) IsRequired() bool { return q.Required }

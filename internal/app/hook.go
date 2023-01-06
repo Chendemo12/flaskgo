@@ -13,13 +13,14 @@ var recoverHandler StackTraceHandlerFunc = nil
 var fiberErrorHandler fiber.ErrorHandler = nil // 设置fiber自定义错误处理函数
 
 // HandlerFunc 路由处理函数
-type HandlerFunc = func(s *Context) any
+type HandlerFunc = func(s *Context) *Response
 
 // StackTraceHandlerFunc 错误堆栈处理函数, 即 recover 方法
 type StackTraceHandlerFunc = func(c *fiber.Ctx, e any)
 
 // routeHandler 路由处理方法(装饰器实现)，用于请求体校验和返回体序列化，同时注入全局服务依赖,
-// 此方法接收一个业务层面的路由钩子方法handler，该方法有且仅有1个参数：flaskgo.Context(),
+// 此方法接收一个业务层面的路由钩子方法handler，
+// 该方法有且仅有1个参数：flaskgo.Context(), 有且必须有一个返回值 *Response
 //
 // routeHandler 方法首先会new一个新的 flaskgo.Context, 并初始化请求体、路由参数、fiber.Ctx 和 flaskgo.Service
 // 之后会校验并绑定路由参数（包含路径参数和查询参数）是否正确，如果错误则直接返回422错误，反之会继续序列化并绑定请求体（如果存在）
@@ -62,11 +63,11 @@ func routeHandler(f HandlerFunc) fiber.Handler {
 
 			// ------------------------------- 校验通过或禁用自动校验 -------------------------------
 			// 处理依赖项
-			if resp := dependencyDone(ctx, route); resp != nil {
+			resp = dependencyDone(ctx, route)
+			if resp != nil {
 				return responseWriter(c, resp) // 返回消息流
 			}
 		}
-
 		//
 		// 执行处理函数并获取返回值
 		if resp := f(ctx); resp != nil { // 自定义函数存在返回值
@@ -147,29 +148,7 @@ func routeParamsValidate(ctx *Context, route *Route) *Response {
 	return nil
 }
 
-// requestBodyMarshal 请求体序列化
-func requestBodyMarshal(ctx *Context, route *Route) *Response {
-	ctx.Console().FInfo("original request body: ", route.RequestModel.Struct)
-	if route.RequestModel.Struct != nil { // 存在请求体定义
-		var rModel any
-		// 拷贝原结构体指针的值，此时每一个请求获得的都是零值且互不影响
-		rModel = *&route.RequestModel.Struct
-		//r := reflect.ValueOf(route.RequestModel.Struct).Interface()
-		// 请求中不存在请求数据或请求体序列化失败
-		resp := ctx.BodyParser(&rModel)
-		if resp != nil {
-			return resp
-		}
-
-		// 序列化成功,绑定请求表单
-		ctx.RequestBody = rModel
-		ctx.Console().FInfo("marshal request body: ", rModel)
-	}
-
-	return nil
-}
-
-func dependencyDone(ctx *Context, route *Route) any {
+func dependencyDone(ctx *Context, route *Route) *Response {
 	for i := 0; i < len(route.Dependencies); i++ {
 		if resp := route.Dependencies[i](ctx); resp != nil {
 			return resp
@@ -179,61 +158,57 @@ func dependencyDone(ctx *Context, route *Route) any {
 	return nil
 }
 
-func responseWriter(c *fiber.Ctx, resp any) error {
-	if fResp, ok := resp.(*Response); ok {
-		switch fResp.Type {
+func responseWriter(c *fiber.Ctx, resp *Response) error {
+	switch resp.Type {
 
-		case JsonResponseType: // Json类型
-			if core.ResponseValidateDisabled {
-				return c.Status(fResp.StatusCode).JSON(fResp.Content)
-			} else {
-				// TODO: implement 响应体校验
-				return c.Status(fResp.StatusCode).JSON(fResp.Content)
-			}
-
-		case StringResponseType:
-			return c.Status(fResp.StatusCode).SendString(fResp.Content.(string))
-
-		case HtmlResponseType: // 返回HTML页面
-			// 设置返回类型
-			c.Set(fiber.HeaderContentType, fResp.ContentType)
-			return c.Status(fResp.StatusCode).SendString(fResp.Content.(string))
-
-		case ErrResponseType:
-			return c.Status(fResp.StatusCode).JSON(fResp.Content)
-
-		case StreamResponseType: // 返回字节流
-			return c.SendStream(bytes.NewReader(fResp.Content.([]byte)))
-
-		case FileResponseType: // 返回一个文件
-			return c.Download(fResp.Content.(string))
-
-		case AdvancedResponseType:
-			return fResp.Content.(fiber.Handler)(c)
-
-		case CustomResponseType:
-			c.Status(fResp.StatusCode).Set(fiber.HeaderContentType, fResp.ContentType)
-			switch fResp.ContentType {
-
-			case fiber.MIMETextHTML, fiber.MIMETextHTMLCharsetUTF8:
-				return c.SendString(fResp.Content.(string))
-			case fiber.MIMEApplicationJSON, fiber.MIMEApplicationJSONCharsetUTF8:
-				return c.JSON(fResp.Content)
-			case fiber.MIMETextXML, fiber.MIMEApplicationXML, fiber.MIMETextXMLCharsetUTF8, fiber.MIMEApplicationXMLCharsetUTF8:
-				return c.XML(fResp.Content)
-			case fiber.MIMETextPlain, fiber.MIMETextPlainCharsetUTF8:
-				return c.SendString(fResp.Content.(string))
-			case fiber.MIMEApplicationJavaScript, fiber.MIMEApplicationJavaScriptCharsetUTF8:
-			case fiber.MIMEApplicationForm:
-			case fiber.MIMEOctetStream:
-			case fiber.MIMEMultipartForm:
-
-			}
-			return c.Status(fResp.StatusCode).JSON(fResp.Content)
+	case JsonResponseType: // Json类型
+		if core.ResponseValidateDisabled {
+			return c.Status(resp.StatusCode).JSON(resp.Content)
+		} else {
+			// TODO: implement 响应体校验
+			return c.Status(resp.StatusCode).JSON(resp.Content)
 		}
 
-	} else { // 直接返回数据体, TODO: implement 此处需要返回值校验
-		return c.JSON(resp)
+	case StringResponseType:
+		return c.Status(resp.StatusCode).SendString(resp.Content.(string))
+
+	case HtmlResponseType: // 返回HTML页面
+		// 设置返回类型
+		c.Set(fiber.HeaderContentType, resp.ContentType)
+		return c.Status(resp.StatusCode).SendString(resp.Content.(string))
+
+	case ErrResponseType:
+		return c.Status(resp.StatusCode).JSON(resp.Content)
+
+	case StreamResponseType: // 返回字节流
+		return c.SendStream(bytes.NewReader(resp.Content.([]byte)))
+
+	case FileResponseType: // 返回一个文件
+		return c.Download(resp.Content.(string))
+
+	case AdvancedResponseType:
+		return resp.Content.(fiber.Handler)(c)
+
+	case CustomResponseType:
+		c.Status(resp.StatusCode).Set(fiber.HeaderContentType, resp.ContentType)
+		switch resp.ContentType {
+
+		case fiber.MIMETextHTML, fiber.MIMETextHTMLCharsetUTF8:
+			return c.SendString(resp.Content.(string))
+		case fiber.MIMEApplicationJSON, fiber.MIMEApplicationJSONCharsetUTF8:
+			return c.JSON(resp.Content)
+		case fiber.MIMETextXML, fiber.MIMEApplicationXML, fiber.MIMETextXMLCharsetUTF8, fiber.MIMEApplicationXMLCharsetUTF8:
+			return c.XML(resp.Content)
+		case fiber.MIMETextPlain, fiber.MIMETextPlainCharsetUTF8:
+			return c.SendString(resp.Content.(string))
+		//case fiber.MIMETextJavaScript, fiber.MIMETextJavaScriptCharsetUTF8:
+		//case fiber.MIMEApplicationForm:
+		//case fiber.MIMEOctetStream:
+		//case fiber.MIMEMultipartForm:
+		default:
+			return c.Status(resp.StatusCode).JSON(resp.Content)
+		}
+	default:
+		return c.Status(resp.StatusCode).JSON(resp.Content)
 	}
-	return nil
 }
