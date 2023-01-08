@@ -10,6 +10,27 @@ import (
 
 type dict map[string]any
 
+// 用于swagger的一些静态文件，来自FastApi
+const (
+	swaggerCssUrl     = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui.css"
+	swaggerFaviconUrl = "https://fastapi.tiangolo.com/img/favicon.png"
+	swaggerJsUrl      = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-bundle.js"
+	redocJsUrl        = "https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"
+	redocFaviconUrl   = "https://fastapi.tiangolo.com/img/favicon.png"
+	openapiUrl        = "openapi.json"
+)
+
+type BaseModelKind int
+
+const OpenApiVersion = "3.0.2"
+const (
+	RModelKind BaseModelKind = iota + 1
+	RFieldKind
+	QModelKind
+	RouteRespKind
+	RouteInsKind
+	RouteInsGroupKind
+)
 const (
 	ModelsSelectorName = "schemas"
 	ModelsRefPrefix    = "#/components/schemas/"
@@ -75,6 +96,52 @@ var customErrorDefinition = dict{
 	},
 }
 
+type OpenApi struct {
+	Info        *Info             `json:"info,omitempty" description:"联系信息"`
+	Tags        []Tag             `json:"tags" description:"标签"`
+	Servers     map[string]string `json:"servers" description:""`
+	Definitions map[string]any    `json:"definitions" description:"模型文档"`
+	Routes      []PathItem        `json:"routes" description:"路由列表,同一路由存在多个方法文档"`
+}
+
+func (o *OpenApi) UpdateDefinition(key string, value map[string]any) {
+
+}
+
+func (o *OpenApi) UpdateRoute(path string, value map[string]any) {
+
+}
+
+func (o *OpenApi) Components() (m map[string]map[string]any) {
+	m["schemas"] = o.Definitions
+	return
+}
+
+func (o *OpenApi) Paths() (m map[string]map[string]any) {
+	for i := 0; i < len(o.Routes); i++ {
+		m[o.Routes[i].Path] = o.Routes[i].Scheme()
+	}
+	return
+}
+
+func (o *OpenApi) Schema() (m map[string]any) {
+	m = map[string]any{"openapi": OpenApiVersion, "info": o.Info, "components": o.Components}
+	tags := make([]map[string]string, len(o.Tags))
+	if len(o.Servers) > 0 {
+		m["servers"] = o.Servers
+	}
+
+	for i := 0; i < len(o.Tags); i++ {
+		tags[i] = o.Tags[i].Schema()
+	}
+
+	m["tags"] = tags
+	m["components"] = o.Components()
+	m["paths"] = o.Paths()
+
+	return
+}
+
 // ------------------------------------------- 创建基础路由 -------------------------------------------
 
 func clearCacheMap() {
@@ -132,18 +199,20 @@ func AddPathDoc(path string, schema map[string]any) {
 //
 // 其中 RouteModel 必须首先被生成。并通过 AddModelDoc 添加模型文档
 func RegisterSwagger(f *fiber.App, title, description, version string, license map[string]string) {
-	modelsDocMap[String.String()] = String.Swag()
+	//modelsDocMap[String.String()] = String.Swag()
 	modelsDocMap["ValidationError"] = validationErrorDefinition
 	modelsDocMap["HTTPValidationError"] = validationErrorResponseDefinition
 	modelsDocMap["CustomValidationError"] = customErrorDefinition
 
 	// ---------------------------- swagger base info ------------------------
-	template["openapi"] = "3.0.2"
-	template["info"] = map[string]any{
-		"description": description,
-		"title":       title,
-		"license":     license,
-		"version":     version,
+
+	info := map[string]any{
+		"title":          title,
+		"version":        version,
+		"description":    description,
+		"termsOfService": "",
+		"contact":        "",
+		"license":        license,
 	}
 
 	// ---------------------------- swagger routes ------------------------
@@ -159,9 +228,17 @@ func RegisterSwagger(f *fiber.App, title, description, version string, license m
 		m[path] = routes
 	}
 
-	template["paths"] = m
 	// ---------------------------- swagger descriptions ------------------------
-	template["components"] = dict{ModelsSelectorName: modelsDocMap}
+
+	components := dict{ModelsSelectorName: modelsDocMap}
+
+	// openapi docs
+
+	template["openapi"] = OpenApiVersion
+	template["info"] = info
+	template["servers"] = []dict{}
+	template["components"] = components
+	template["paths"] = m
 
 	// 序列化文档后返回字节流
 	templateBytes, _ = helper.DefaultJsonMarshal(template)

@@ -142,24 +142,6 @@ func HTMLResponse(statusCode int, context string) *Response {
 // @return  resp *Response response返回体
 func OKResponse(content any) *Response { return JSONResponse(http.StatusOK, content) }
 
-// ResourceNotFound 创建资源不存在返回模型
-// @param   errorCode  string    错误码
-// @param   msg        string    错误消息
-// @param   loc        []string  错误字段
-// @return  resp *Response response返回体
-func ResourceNotFound(errorCode, msg string, loc []string) *Response {
-	return &Response{
-		StatusCode: http.StatusNotFound,
-		Content: map[string]any{
-			"ErrorCode": errorCode,
-			"Loc":       loc,
-			"Msg":       msg,
-			"Type":      "string",
-		},
-		Type: JsonResponseType,
-	}
-}
-
 // AdvancedResponse 高级返回值，允许返回一个函数，以实现任意类型的返回
 // @param   statusCode  int            响应状态码
 // @param   content     fiber.Handler  钩子函数

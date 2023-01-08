@@ -6,8 +6,8 @@ package flaskgo
 import (
 	"github.com/Chendemo12/flaskgo/internal/app"
 	"github.com/Chendemo12/flaskgo/internal/core"
+	"github.com/Chendemo12/flaskgo/internal/godantic"
 	"github.com/Chendemo12/flaskgo/internal/mode"
-	"github.com/Chendemo12/flaskgo/internal/openapi"
 	"time"
 )
 
@@ -21,6 +21,7 @@ const (
 
 //goland:noinspection GoUnusedGlobalVariable
 var (
+	// Deprecated: NewDefaultFlaskGo use NewFlaskGo instead.
 	NewDefaultFlaskGo = app.NewFlaskGo
 	NewFlaskGo        = app.NewFlaskGo
 	APIRouter         = app.APIRouter
@@ -34,34 +35,38 @@ var (
 	GetMode = mode.GetMode
 )
 
-//goland:noinspection GoUnusedGlobalVariable
-var ( // types
-	Int8    = openapi.Int8
-	Int16   = openapi.Int16
-	Int32   = openapi.Int32
-	Int64   = openapi.Int64
-	Uint8   = openapi.Uint8
-	Uint16  = openapi.Uint16
-	Uint32  = openapi.Uint32
-	Uint64  = openapi.Uint64
-	Float32 = openapi.Float32
-	Float64 = openapi.Float64
-	String  = openapi.String
-	Boolean = openapi.Boolean
-	Bool    = openapi.Boolean
-	Mapping = openapi.Mapping
+type Field = godantic.Field
+type BaseModel = godantic.BaseModel
+type BaseModelIface = godantic.Iface
 
-	Int     = Int32
-	Byte    = Uint8
-	Uint    = Uint32
-	Float   = Float64
-	Array   = openapi.List
-	List    = openapi.List
-	Ints    = &openapi.RouteModel{Model: Int32, Struct: Int32, RetArray: true}
-	Bytes   = &openapi.RouteModel{Model: Uint8, Struct: Uint8, RetArray: true}
-	Strings = &openapi.RouteModel{Model: String, Struct: String, RetArray: true}
-	Floats  = &openapi.RouteModel{Model: Float64, Struct: Float64, RetArray: true}
-)
+//goland:noinspection GoUnusedGlobalVariable
+//var ( // types
+//	Int8    = openapi.Int8
+//	Int16   = openapi.Int16
+//	Int32   = openapi.Int32
+//	Int64   = openapi.Int64
+//	Uint8   = openapi.Uint8
+//	Uint16  = openapi.Uint16
+//	Uint32  = openapi.Uint32
+//	Uint64  = openapi.Uint64
+//	Float32 = openapi.Float32
+//	Float64 = openapi.Float64
+//	String  = openapi.String
+//	Boolean = openapi.Boolean
+//	Bool    = openapi.Boolean
+//	Mapping = openapi.Mapping
+//
+//	Int     = Int32
+//	Byte    = Uint8
+//	Uint    = Uint32
+//	Float   = Float64
+//	Array   = openapi.List
+//	List    = openapi.List
+//	Ints    = &openapi.RouteModel{Model: Int32, Struct: Int32, RetArray: true}
+//	Bytes   = &openapi.RouteModel{Model: Uint8, Struct: Uint8, RetArray: true}
+//	Strings = &openapi.RouteModel{Model: String, Struct: String, RetArray: true}
+//	Floats  = &openapi.RouteModel{Model: Float64, Struct: Float64, RetArray: true}
+//)
 
 //goland:noinspection GoUnusedGlobalVariable
 type Dict = map[string]any // python dict
@@ -85,24 +90,22 @@ type Router = app.Router
 type Response = app.Response
 type ResponseHeader = app.ResponseHeader
 type ValidationError = app.ValidationError
-type BaseModel = openapi.BaseModel
-type BaseModelIface = openapi.BaseModelIface
 
 //goland:noinspection GoUnusedGlobalVariable
-var (
-	ValidationErrorResponse = app.ValidationErrorResponse
-	AnyResponse             = app.AnyResponse
-	JSONResponse            = app.JSONResponse
-	StringResponse          = app.StringResponse
-	StreamResponse          = app.StreamResponse
-	FileResponse            = app.FileResponse
-	ErrorResponse           = app.ErrorResponse
-	HTMLResponse            = app.HTMLResponse
-	OKResponse              = app.OKResponse
-	ResourceNotFound        = app.ResourceNotFound
-	AdvancedResponse        = app.AdvancedResponse
-	StringsReverse          = openapi.StringsReverse
-)
+//var (
+//	ValidationErrorResponse = app.ValidationErrorResponse
+//	AnyResponse             = app.AnyResponse
+//	JSONResponse            = app.JSONResponse
+//	StringResponse          = app.StringResponse
+//	StreamResponse          = app.StreamResponse
+//	FileResponse            = app.FileResponse
+//	ErrorResponse           = app.ErrorResponse
+//	HTMLResponse            = app.HTMLResponse
+//	OKResponse              = app.OKResponse
+//	ResourceNotFound        = app.ResourceNotFound
+//	AdvancedResponse        = app.AdvancedResponse
+//	StringsReverse          = openapi.StringsReverse
+//)
 
 // DisableBaseRoutes 禁用基础路由
 func DisableBaseRoutes() { core.BaseRoutesDisabled = true }

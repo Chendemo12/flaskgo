@@ -51,7 +51,7 @@ type ReturnLinkInfo struct {
 	SymbolRate  int               `json:"symbol_rate" description:"符号速率"`
 }
 
-func (m ReturnLinkInfo) Doc__() string {
+func (m ReturnLinkInfo) SchemaDesc() string {
 	return "反向链路参数，仅当网管代理配置的参数与此匹配时才转发小站消息到NCC"
 }
 
@@ -61,9 +61,7 @@ type ForwardLinkInfo struct {
 	SymbolRate  int `json:"symbol_rate" description:"符号速率"`
 }
 
-func (m ForwardLinkInfo) Doc__() string {
-	return "前向链路参数"
-}
+func (m ForwardLinkInfo) SchemaDesc() string { return "前向链路参数" }
 
 type SimpleForm struct {
 	flaskgo.BaseModel
@@ -71,7 +69,7 @@ type SimpleForm struct {
 	Age  int    `json:"age" description:"年龄" default:"23" gte:"50" validate:"required"`
 }
 
-func (s SimpleForm) Doc__() string { return "简单的表单" }
+func (s SimpleForm) SchemaDesc() string { return "简单的表单" }
 
 type Step struct {
 	Click string `json:"click"`
@@ -90,25 +88,25 @@ type ExampleForm struct {
 	Actions []Action `json:"actions"`
 }
 
-func makeTunnelWork(s *flaskgo.Context) any {
+func makeTunnelWork(s *flaskgo.Context) *flaskgo.Response {
 	p := TunnelWorkParams{}
 	if err := s.ShouldBindJSON(&p); err != nil {
 		return err
 	}
 
 	time.Sleep(time.Millisecond * 200) // 休眠200ms,模拟设置硬件时长
-	return p.TunnelNo
+	return s.OKResponse(p.TunnelNo)
 }
 
-func setNccReturnLinks(s *flaskgo.Context) any {
+func setNccReturnLinks(s *flaskgo.Context) *flaskgo.Response {
 	p := make([]ReturnLinkInfo, 0)
 	if err := s.ShouldBindJSON(&p); err != nil {
 		return err
 	}
-	return p
+	return s.OKResponse(s)
 }
 
-func getSimpleFrom(s *flaskgo.Context) any {
+func getSimpleFrom(s *flaskgo.Context) *flaskgo.Response {
 	s.Console().FInfo("query fields: ", s.QueryFields)
 	s.Console().FInfo("path fields: ", s.PathFields)
 
@@ -118,30 +116,30 @@ func getSimpleFrom(s *flaskgo.Context) any {
 		return resp
 	}
 
-	return form
+	return s.OKResponse(form)
 }
 
 func makeRouter() *flaskgo.Router {
 	router := flaskgo.APIRouter("/api/device", []string{"Tunnel"})
 	{
 		router.POST(
-			"/simple/:name/:age?", SimpleForm{}, SimpleForm{}, "提交一个个人信息表单", getSimpleFrom,
+			"/simple/:name/:age?", &SimpleForm{}, &SimpleForm{}, "提交一个个人信息表单", getSimpleFrom,
 		).SetQueryParams(map[string]bool{"company": true, "department": false})
 
-		router.GET(
-			"/form/:name", ExampleForm{}, "获得一个随机表单",
-			func(s *flaskgo.Context) any {
-				return ExampleForm{Name: s.PathFields["name"]}
-			})
-
-		router.POST("/tunnel/:no", TunnelWorkParams{}, flaskgo.Int32, "设置通道工作参数", makeTunnelWork).
-			SetDescription("设置通道的工作参数，表单内部的`tunnel_no`必须与路径参数保持一致")
-
-		router.POST(
-			"/ncc/return_links",
-			flaskgo.List(ReturnLinkInfo{}), flaskgo.List(ReturnLinkInfo{}), "设置NCC反向链路参数",
-			setNccReturnLinks,
-		)
+		//router.GET(
+		//	"/form/:name", ExampleForm{}, "获得一个随机表单",
+		//	func(s *flaskgo.Context) any {
+		//		return ExampleForm{Name: s.PathFields["name"]}
+		//	})
+		//
+		//router.POST("/tunnel/:no", TunnelWorkParams{}, flaskgo.Int32, "设置通道工作参数", makeTunnelWork).
+		//	SetDescription("设置通道的工作参数，表单内部的`tunnel_no`必须与路径参数保持一致")
+		//
+		//router.POST(
+		//	"/ncc/return_links",
+		//	flaskgo.List(ReturnLinkInfo{}), flaskgo.List(ReturnLinkInfo{}), "设置NCC反向链路参数",
+		//	setNccReturnLinks,
+		//)
 	}
 	return router
 }

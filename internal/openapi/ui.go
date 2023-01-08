@@ -14,7 +14,7 @@ func makeSwaggerUiHtml(title, openapiUrl, jsUrl, cssUrl, faviconUrl string) stri
 	<head>
 		<link type="text/css" rel="stylesheet" href="` + cssUrl + `">
 		<link rel="shortcut icon" href="` + faviconUrl + `">
-		<title>` + title + `</title>
+		<title>` + title + ` - Swagger UI</title>
 	</head>
 	<body>
 		<div id="swagger-ui">
