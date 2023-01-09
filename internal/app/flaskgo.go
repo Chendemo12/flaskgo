@@ -1,12 +1,3 @@
-// Package app
-//
-// hooks.go: FlaskGo 路由中间件, 参数校验和返回值序列化方法;
-//
-// response.go: 返回体;
-//
-// svc: FlaskGo 全局服务依赖 Service, Context，自定义服务上下文需实现 ServiceContextIface 接口
-//
-// router.go: FlaskGo 路由组;
 package app
 
 import (
@@ -28,8 +19,6 @@ import (
 	"time"
 )
 
-type EventKind string
-
 const (
 	startupEvent  EventKind = "startup"
 	shutdownEvent EventKind = "shutdown"
@@ -41,6 +30,8 @@ var (
 	appEngine *FlaskGo = nil // 单例模式
 )
 
+type EventKind string
+
 type Dict = map[string]any
 
 type Event struct {
@@ -48,21 +39,32 @@ type Event struct {
 	Type EventKind // 事件类型：startup 或 shutdown
 }
 
+type cronjob struct {
+	job     CronJob
+	cancel  context.CancelFunc
+	context context.Context
+	timer   *time.Timer
+}
+
 type FlaskGo struct {
-	console     zaplog.ConsoleLogger // 控制台日志
-	logger      zaplog.Iface         // 日志对象，通常=Sugar(*zap.SugaredLogger已实现此接口)
-	isStarted   chan struct{}        // 标记程序是否完成启动
-	background  context.Context
-	service     *Service   // 全局服务依赖
-	engine      *fiber.App // fiber.App
-	version     string
-	host        string
-	port        string
-	description string
-	title       string
-	routers     []*Router // FlaskGo 路由组 Router
-	events      []*Event
-	middlewares []any
+	console     zaplog.ConsoleLogger `description:"控制台日志"`
+	logger      zaplog.Iface         `description:"日志对象，通常=Sugar(*zap.SugaredLogger已实现此接口)"`
+	isStarted   chan struct{}        `description:"标记程序是否完成启动"`
+	background  context.Context      `description:"根 context.Context"`
+	ctx         context.Context      `description:"可以取消的context.Context"`
+	cancel      context.CancelFunc   `description:"取消函数"`
+	service     *Service             `description:"全局服务依赖"`
+	engine      *fiber.App           `description:"fiber.App"`
+	version     string               `description:"程序版本号"`
+	host        string               `description:"运行地址"`
+	port        string               `description:"运行端口"`
+	description string               `description:"程序描述"`
+	title       string               `description:"程序名,同时作为日志文件名"`
+	jobs        []*cronjob           `description:"定时任务"`
+	routers     []*Router            `description:"FlaskGo 路由组 Router"`
+	events      []*Event             `description:"启动和关闭事件"`
+	middlewares []any                `description:"自定义中间件"`
+	poll        int                  `description:"FlaskGo.Context资源池"`
 }
 
 // Title 应用程序名和日志文件名
@@ -74,28 +76,29 @@ func (f *FlaskGo) Version() string { return f.version }
 // Description 描述信息，同时会显示在Swagger文档上
 func (f *FlaskGo) Description() string { return f.description }
 
-// Done 监听 FlaskGo 的关闭事件
-func (f *FlaskGo) Done() <-chan struct{} { return f.background.Done() }
+func (f *FlaskGo) Background() context.Context { return f.background }
+func (f *FlaskGo) Context() context.Context    { return f.ctx }
+func (f *FlaskGo) Done() <-chan struct{}       { return f.ctx.Done() }
 
 // mountBaseRoutes 创建基础路由
 func (f *FlaskGo) mountBaseRoutes() {
 	// 注册最基础的路由
 	router := APIRouter("/api/base", []string{"Base"})
 	{
-		router.GET("/title", godantic.String, "获取软件名", func(c *Context) any {
-			return StringResponse(appEngine.title)
+		router.GET("/title", godantic.String, "获取软件名", func(c *Context) *Response {
+			return c.StringResponse(appEngine.title)
 		})
-		router.GET("/Description", godantic.String, "获取软件描述信息", func(c *Context) any {
-			return StringResponse(appEngine.Description())
+		router.GET("/Description", godantic.String, "获取软件描述信息", func(c *Context) *Response {
+			return c.StringResponse(appEngine.Description())
 		})
-		router.GET("/version", godantic.String, "获取软件版本号", func(c *Context) any {
-			return StringResponse(appEngine.version)
+		router.GET("/version", godantic.String, "获取软件版本号", func(c *Context) *Response {
+			return c.StringResponse(appEngine.version)
 		})
-		router.GET("/heartbeat", godantic.String, "心跳检测", func(c *Context) any {
-			return StringResponse("pong")
+		router.GET("/heartbeat", godantic.String, "心跳检测", func(c *Context) *Response {
+			return c.StringResponse("pong")
 		})
-		router.GET("/debug", &DebugMode{}, "获取调试开关", func(c *Context) any {
-			return OKResponse(DebugMode{Mode: mode.GetMode()})
+		router.GET("/debug", &DebugMode{}, "获取调试开关", func(c *Context) *Response {
+			return c.OKResponse(DebugMode{Mode: mode.GetMode()})
 		})
 	}
 	f.routers = append(f.routers, router)
@@ -150,7 +153,6 @@ func (f *FlaskGo) initialize() *FlaskGo {
 
 	// 创建 fiber.App
 	f.engine = createFiberApp(f.title, f.version)
-	f.background = context.Background()
 
 	// 注册中间件
 	for i := 0; i < len(f.middlewares); i++ {
@@ -324,26 +326,44 @@ func (f *FlaskGo) ActivateHotSwitch() *FlaskGo {
 	return f
 }
 
-// RunCronjob 启动定时任务, 此函数内部通过创建一个协程来执行任务，并且阻塞至flaskgo完成初始化
+// Deprecated: RunCronjob 启动定时任务, 此函数内部通过创建一个协程来执行任务，并且阻塞至flaskgo完成初始化
 // @param  tasker   func(service CustomContextIface)  error  定时任务
 // @param  service  CustomContextIface                服务依赖
 func (f *FlaskGo) RunCronjob(tasker func(ctx *Service) error) *FlaskGo {
-	go func() {
-		defer close(f.isStarted)
-		for {
-			select {
-			case <-f.isStarted:
-				if err := tasker(f.Service()); err != nil {
-					f.console.Error("cronjob error: ", err.Error())
-				} else {
-					innerOutput("DEBUG", "Tasker started.")
+	return f
+}
+
+// AddCronjob 添加定时任务(循环调度任务)
+// 此任务会在各种初始化及启动事件全部执行完成之后触发
+func (f *FlaskGo) AddCronjob(jobs ...CronJob) *FlaskGo {
+	for _, job := range jobs {
+		j := &cronjob{job: job, timer: time.NewTimer(job.Interval())}
+		j.context, j.cancel = context.WithCancel(f.ctx)
+		f.jobs = append(f.jobs, j)
+	}
+
+	return f
+}
+
+func (f *FlaskGo) runCronJob() *FlaskGo {
+	defer close(f.isStarted)
+
+	for _, job_ := range f.jobs {
+		job := job_ // 创建中间变量,避免获取到同一个对象
+		go func() {
+
+			for {
+				select {
+				case <-f.Done():
+					break
+				case <-job.timer.C:
+					go job.job.Do()
+					// TODO: 当 job.job.Do() 超时时触发任务
 				}
-				return
-			default:
-				time.Sleep(time.Millisecond * 100)
 			}
-		}
-	}()
+		}()
+	}
+
 	return f
 }
 
@@ -361,6 +381,8 @@ func (f *FlaskGo) serve() *FlaskGo {
 	f.isStarted <- struct{}{} // 解除阻塞上层的任务
 	f.console.SInfo("HTTP server listening on: " + net.JoinHostPort(f.host, f.port))
 
+	// 在各种初始化及启动事件执行完成之后触发
+	f.runCronJob()
 	return f
 }
 
@@ -379,8 +401,8 @@ func (f *FlaskGo) Run(host, port string) {
 		log.Fatal(f.engine.Listen(net.JoinHostPort(f.host, f.port)))
 	}()
 
-	<-quit              // 阻塞进程，直到接收到停止信号,准备关闭程序
-	f.background.Done() // 标记结束
+	<-quit     // 阻塞进程，直到接收到停止信号,准备关闭程序
+	f.cancel() // 标记结束
 
 	// 执行关机前事件
 	for _, event := range f.events {
@@ -391,7 +413,7 @@ func (f *FlaskGo) Run(host, port string) {
 
 	_ = f.logger.Sync()
 	// TODO：implement 平滑关机
-	innerOutput("INFO", "Server exiting")
+	f.console.SInfo("Server exit")
 }
 
 // NewFlaskGo 创建一个WEB服务
@@ -413,11 +435,13 @@ func NewFlaskGo(title, version string, debug bool, ctx CustomContextIface) *Flas
 			version:     version,
 			console:     console,
 			description: title + " Micro Context",
+			background:  context.Background(),
 			service:     &Service{ctx: ctx, validate: validator.New()},
 			isStarted:   make(chan struct{}, 1),
 			middlewares: make([]any, 0),
 			events:      make([]*Event, 0),
 		}
+		appEngine.ctx, appEngine.cancel = context.WithCancel(appEngine.background)
 		appEngine.service.app = appEngine
 	})
 
