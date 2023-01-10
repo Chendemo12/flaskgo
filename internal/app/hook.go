@@ -30,13 +30,11 @@ type StackTraceHandlerFunc = func(c *fiber.Ctx, e any)
 // @return  fiber.Handler fiber路由处理方法
 func routeHandler(f HandlerFunc) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		ctx := &Context{
-			PathFields:  make(map[string]string),
-			QueryFields: make(map[string]string),
-			RequestBody: int64(1), // 初始化为1，避免访问错误
-			fs:          appEngine.Service(),
-			ec:          c,
-		}
+
+		// Acquire Ctx with fiber.Ctx request from pool
+		ctx := appEngine.AcquireCtx(c)
+		// Release Ctx to pool
+		defer appEngine.ReleaseCtx(ctx)
 
 		// 路由唯一标识: c.Method()+RouteSeparator+c.RelativePath()
 		// c.Route().RelativePath 获取注册的路径，

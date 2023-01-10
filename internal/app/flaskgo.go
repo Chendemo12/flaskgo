@@ -53,11 +53,11 @@ type FlaskGo struct {
 	port        string               `description:"运行端口"`
 	description string               `description:"程序描述"`
 	title       string               `description:"程序名,同时作为日志文件名"`
-	jobs        []*Runner            `description:"定时任务"`
+	jobs        []*Scheduler         `description:"定时任务"`
 	routers     []*Router            `description:"FlaskGo 路由组 Router"`
 	events      []*Event             `description:"启动和关闭事件"`
 	middlewares []any                `description:"自定义中间件"`
-	poll        int                  `description:"FlaskGo.Context资源池"`
+	pool        *sync.Pool           `description:"FlaskGo.Context资源池"`
 }
 
 // Title 应用程序名和日志文件名
@@ -69,9 +69,7 @@ func (f *FlaskGo) Version() string { return f.version }
 // Description 描述信息，同时会显示在Swagger文档上
 func (f *FlaskGo) Description() string { return f.description }
 
-func (f *FlaskGo) Background() context.Context { return f.background }
-func (f *FlaskGo) Context() context.Context    { return f.ctx }
-func (f *FlaskGo) Done() <-chan struct{}       { return f.ctx.Done() }
+func (f *FlaskGo) Done() <-chan struct{} { return f.ctx.Done() }
 
 // mountBaseRoutes 创建基础路由
 func (f *FlaskGo) mountBaseRoutes() {
@@ -186,6 +184,34 @@ func (f *FlaskGo) initialize() *FlaskGo {
 	return f
 }
 
+func (f *FlaskGo) runCronJob() *FlaskGo {
+	defer close(f.isStarted)
+
+	for _, job := range f.jobs {
+		job.Run()
+	}
+
+	return f
+}
+
+// serve 初始化服务
+func (f *FlaskGo) serve() *FlaskGo {
+	f.initialize().ActivateHotSwitch()
+
+	// 执行启动前事件
+	for _, event := range f.events {
+		if event.Type == startupEvent {
+			event.Fc()
+		}
+	}
+
+	f.isStarted <- struct{}{} // 解除阻塞上层的任务
+	f.console.SInfo("HTTP server listening on: " + net.JoinHostPort(f.host, f.port))
+
+	// 在各种初始化及启动事件执行完成之后触发
+	return f.runCronJob()
+}
+
 // Service 获取FlaskGo全局服务上下文
 func (f *FlaskGo) Service() *Service { return f.service }
 
@@ -196,9 +222,26 @@ func (f *FlaskGo) CustomServiceContext() CustomContextIface { return f.service.c
 // @return  []*Router 路由组
 func (f *FlaskGo) APIRouters() []*Router { return f.routers }
 
-// FiberApp 获取fiber引擎
+// Engine 获取fiber引擎
 // @return  *fiber.App fiber引擎
-func (f *FlaskGo) FiberApp() *fiber.App { return f.engine }
+func (f *FlaskGo) Engine() *fiber.App { return f.engine }
+
+// AcquireCtx 申请一个 Context 并初始化
+func (f *FlaskGo) AcquireCtx(fctx *fiber.Ctx) *Context {
+	c := f.pool.Get().(*Context)
+	// TODO: 初始化各种参数
+	c.fs = f.service
+	c.ec = fctx
+	c.RequestBody = int64(1) // 初始化为1，避免访问错误
+	return c
+}
+
+// ReleaseCtx 释放并归还 Context
+func (f *FlaskGo) ReleaseCtx(ctx *Context) {
+	ctx.ec = nil
+
+	f.pool.Put(ctx)
+}
 
 // OnEvent 添加启动事件
 // @param  kind  事件类型，取值需为  "startup"  /  "shutdown"
@@ -330,41 +373,15 @@ func (f *FlaskGo) RunCronjob(tasker func(ctx *Service) error) *FlaskGo {
 // 此任务会在各种初始化及启动事件全部执行完成之后触发
 func (f *FlaskGo) AddCronjob(jobs ...CronJob) *FlaskGo {
 	for _, job := range jobs {
-		j := &Runner{job: job, ticker: time.NewTicker(job.Interval())}
-		j.context, j.cancel = context.WithCancel(f.ctx)
+		j := &Scheduler{
+			job:    job,
+			pctx:   f.ctx, // 绑定父节点Context
+			ticker: time.NewTicker(job.Interval()),
+		}
 		f.jobs = append(f.jobs, j)
 	}
 
 	return f
-}
-
-func (f *FlaskGo) runCronJob() *FlaskGo {
-	defer close(f.isStarted)
-
-	for i := 0; i < len(f.jobs); i++ {
-		job := f.jobs[i] // 创建中间变量,避免获取到同一个对象
-		go job.Run()
-	}
-
-	return f
-}
-
-// serve 初始化服务
-func (f *FlaskGo) serve() *FlaskGo {
-	f.initialize().ActivateHotSwitch()
-
-	// 执行启动前事件
-	for _, event := range f.events {
-		if event.Type == startupEvent {
-			event.Fc()
-		}
-	}
-
-	f.isStarted <- struct{}{} // 解除阻塞上层的任务
-	f.console.SInfo("HTTP server listening on: " + net.JoinHostPort(f.host, f.port))
-
-	// 在各种初始化及启动事件执行完成之后触发
-	return f.runCronJob()
 }
 
 // Run 启动服务, 此方法会阻塞运行，因此必须放在main函数结尾
@@ -421,6 +438,11 @@ func NewFlaskGo(title, version string, debug bool, ctx CustomContextIface) *Flas
 			isStarted:   make(chan struct{}, 1),
 			middlewares: make([]any, 0),
 			events:      make([]*Event, 0),
+			pool: &sync.Pool{
+				New: func() interface{} {
+					return new(Context)
+				},
+			},
 		}
 		appEngine.ctx, appEngine.cancel = context.WithCancel(appEngine.background)
 		appEngine.service.app = appEngine

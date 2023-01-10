@@ -180,3 +180,20 @@ func (s *Service) Validate(stc any) *Response {
 
 	return nil
 }
+
+// Pool Context 池，用以减少运行中的对象分配
+type Pool struct {
+}
+
+// Init 初始化指定数量的 Context 池
+func (p *Pool) Init(num int) {
+
+}
+
+func (p *Pool) Get() *Context {
+	return &Context{}
+}
+
+func (p *Pool) Put(ctx *Context) {
+
+}

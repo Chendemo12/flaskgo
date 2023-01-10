@@ -91,6 +91,10 @@ type Response = app.Response
 type ResponseHeader = app.ResponseHeader
 type ValidationError = app.ValidationError
 
+type CronJob = app.CronJob
+type Scheduler = app.Scheduler
+type CronJobFunc = app.CronJobFunc
+
 //goland:noinspection GoUnusedGlobalVariable
 //var (
 //	ValidationErrorResponse = app.ValidationErrorResponse

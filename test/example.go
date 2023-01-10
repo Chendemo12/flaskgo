@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"github.com/Chendemo12/flaskgo"
 	"time"
 )
@@ -144,16 +146,18 @@ func makeRouter() *flaskgo.Router {
 	return router
 }
 
-func tasks(f *flaskgo.Service) error {
-	f.Console().SInfo("tasks starting...")
-	go func() {
-		for {
-			f.Console().SInfo(time.Now().String())
-			time.Sleep(time.Second * 10)
-		}
-	}()
+// Clock 定时任务
+type Clock struct {
+	flaskgo.CronJobFunc
+}
+
+func (c *Clock) Interval() time.Duration { return time.Second * 5 }
+
+func (c *Clock) Do(ctx context.Context) error {
+	fmt.Println(time.Now().String())
 	return nil
 }
+func (c *Clock) String() string { return "Clock" }
 
 func ExampleFlaskGo_App() {
 	flaskgo.DisableMultipleProcess()
@@ -167,7 +171,7 @@ func ExampleFlaskGo_App() {
 	app := flaskgo.NewFlaskGo("FlaskGo Example", "0.2.1", true, ctx)
 	app.IncludeRouter(makeRouter()).
 		SetDescription("一个简单的FlaskGo应用程序,在启动app之前首先需要创建并替换ServiceContext,最后调用Run来运行程序").
-		RunCronjob(tasks)
+		AddCronjob(&Clock{})
 
 	app.OnEvent("startup", func() { app.Service().Console().SInfo("startup event: 1") })
 	app.OnEvent("startup", func() { app.Service().Console().SInfo("startup event: 2") })
