@@ -39,3 +39,32 @@ func (c *CronJobFunc) Interval() time.Duration {
 func (c *CronJobFunc) WhenError(ctx context.Context) {
 	return
 }
+
+type Runner struct {
+	job     CronJob
+	context context.Context
+	ticker  *time.Ticker
+	cancel  context.CancelFunc
+}
+
+func (r *Runner) Run()                     { r.Scheduler() }
+func (r *Runner) Cancel()                  { r.cancel() }
+func (r *Runner) AtTime() <-chan time.Time { return r.ticker.C }
+func (r *Runner) String() string           { return r.job.String() }
+
+func (r *Runner) Do() {
+}
+
+func (r *Runner) Scheduler() {
+	go func() {
+		for {
+			select {
+			case <-r.context.Done():
+				break
+			case <-r.AtTime():
+				go r.job.Do()
+				// TODO: 当 job.Do() 超时时触发任务
+			}
+		}
+	}()
+}

@@ -39,13 +39,6 @@ type Event struct {
 	Type EventKind // 事件类型：startup 或 shutdown
 }
 
-type cronjob struct {
-	job     CronJob
-	cancel  context.CancelFunc
-	context context.Context
-	timer   *time.Timer
-}
-
 type FlaskGo struct {
 	console     zaplog.ConsoleLogger `description:"控制台日志"`
 	logger      zaplog.Iface         `description:"日志对象，通常=Sugar(*zap.SugaredLogger已实现此接口)"`
@@ -60,7 +53,7 @@ type FlaskGo struct {
 	port        string               `description:"运行端口"`
 	description string               `description:"程序描述"`
 	title       string               `description:"程序名,同时作为日志文件名"`
-	jobs        []*cronjob           `description:"定时任务"`
+	jobs        []*Runner            `description:"定时任务"`
 	routers     []*Router            `description:"FlaskGo 路由组 Router"`
 	events      []*Event             `description:"启动和关闭事件"`
 	middlewares []any                `description:"自定义中间件"`
@@ -337,7 +330,7 @@ func (f *FlaskGo) RunCronjob(tasker func(ctx *Service) error) *FlaskGo {
 // 此任务会在各种初始化及启动事件全部执行完成之后触发
 func (f *FlaskGo) AddCronjob(jobs ...CronJob) *FlaskGo {
 	for _, job := range jobs {
-		j := &cronjob{job: job, timer: time.NewTimer(job.Interval())}
+		j := &Runner{job: job, ticker: time.NewTicker(job.Interval())}
 		j.context, j.cancel = context.WithCancel(f.ctx)
 		f.jobs = append(f.jobs, j)
 	}
@@ -348,20 +341,9 @@ func (f *FlaskGo) AddCronjob(jobs ...CronJob) *FlaskGo {
 func (f *FlaskGo) runCronJob() *FlaskGo {
 	defer close(f.isStarted)
 
-	for _, job_ := range f.jobs {
-		job := job_ // 创建中间变量,避免获取到同一个对象
-		go func() {
-
-			for {
-				select {
-				case <-f.Done():
-					break
-				case <-job.timer.C:
-					go job.job.Do()
-					// TODO: 当 job.job.Do() 超时时触发任务
-				}
-			}
-		}()
+	for i := 0; i < len(f.jobs); i++ {
+		job := f.jobs[i] // 创建中间变量,避免获取到同一个对象
+		go job.Run()
 	}
 
 	return f
@@ -382,8 +364,7 @@ func (f *FlaskGo) serve() *FlaskGo {
 	f.console.SInfo("HTTP server listening on: " + net.JoinHostPort(f.host, f.port))
 
 	// 在各种初始化及启动事件执行完成之后触发
-	f.runCronJob()
-	return f
+	return f.runCronJob()
 }
 
 // Run 启动服务, 此方法会阻塞运行，因此必须放在main函数结尾
