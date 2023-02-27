@@ -89,7 +89,7 @@ func JSONResponse(statusCode int, content any) *Response {
 	}
 }
 
-// StringResponse 返回值为文件对象，如：照片视频文件流等, 若文件不存在，则状态码置为404
+// StringResponse 返回值为字符串对象
 // @param   content  string  字符串文本
 // @return  resp *Response response返回体
 func StringResponse(content string) *Response {

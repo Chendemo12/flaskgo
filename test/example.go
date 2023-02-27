@@ -109,8 +109,8 @@ func setNccReturnLinks(s *flaskgo.Context) *flaskgo.Response {
 }
 
 func getSimpleFrom(s *flaskgo.Context) *flaskgo.Response {
-	s.Console().FInfo("query fields: ", s.QueryFields)
-	s.Console().FInfo("path fields: ", s.PathFields)
+	s.Logger().Info("query fields: ", s.QueryFields)
+	s.Logger().Info("path fields: ", s.PathFields)
 
 	form := SimpleForm{}
 	resp := s.ShouldBindJSON(&form)
@@ -173,11 +173,11 @@ func ExampleFlaskGo_App() {
 		SetDescription("一个简单的FlaskGo应用程序,在启动app之前首先需要创建并替换ServiceContext,最后调用Run来运行程序").
 		AddCronjob(&Clock{})
 
-	app.OnEvent("startup", func() { app.Service().Console().SInfo("startup event: 1") })
-	app.OnEvent("startup", func() { app.Service().Console().SInfo("startup event: 2") })
-	app.OnEvent("startup", func() { app.Service().Console().SInfo("startup event: 3") })
-	app.OnEvent("shutdown", func() { app.Service().Console().SInfo("shutdown event: 1") })
-	app.OnEvent("shutdown", func() { app.Service().Console().SInfo("shutdown event: 2") })
+	app.OnEvent("startup", func() { app.Service().Logger().Info("startup event: 1") })
+	app.OnEvent("startup", func() { app.Service().Logger().Info("startup event: 2") })
+	app.OnEvent("startup", func() { app.Service().Logger().Info("startup event: 3") })
+	app.OnEvent("shutdown", func() { app.Service().Logger().Info("shutdown event: 1") })
+	app.OnEvent("shutdown", func() { app.Service().Logger().Info("shutdown event: 2") })
 
 	app.Run(conf.HTTP.Host, conf.HTTP.Port) // 阻塞运行
 }

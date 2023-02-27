@@ -1,7 +1,7 @@
 github.com/BurntSushi/toml v1.2.1 h1:9F2/+DoOYIOksmaJFPw1tGFy1eDnIJXg+UHjuD8lTak=
 github.com/BurntSushi/toml v1.2.1/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
-github.com/Chendemo12/functools v0.1.12 h1:8z/fJbgaXmBjD1/+YLYVjohdqdXWnVojo6eKvghrvHo=
-github.com/Chendemo12/functools v0.1.12/go.mod h1:XcVZ8klM/dpbxQHS8pgKJZWTcSGsakcqMeroJi0bsgU=
+github.com/Chendemo12/functools v0.1.19 h1:OjpCvpKvFHuhMvxEkK2Zio4DhJAVp/YSKHV8VPFMoAY=
+github.com/Chendemo12/functools v0.1.19/go.mod h1:XcVZ8klM/dpbxQHS8pgKJZWTcSGsakcqMeroJi0bsgU=
 github.com/andybalholm/brotli v1.0.4 h1:V7DdXeJtZscaqfNuAdSRuRFzuiKlHSC/Zh3zl9qY3JY=
 github.com/andybalholm/brotli v1.0.4/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
