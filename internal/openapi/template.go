@@ -2,7 +2,6 @@ package openapi
 
 import (
 	"bytes"
-	"github.com/Chendemo12/flaskgo/internal/godantic"
 	"github.com/Chendemo12/flaskgo/internal/mode"
 	"github.com/Chendemo12/functools/helper"
 	"github.com/gofiber/fiber/v2"
@@ -22,7 +21,6 @@ const (
 
 type BaseModelKind int
 
-const OpenApiVersion = "3.0.2"
 const (
 	RModelKind BaseModelKind = iota + 1
 	RFieldKind
@@ -35,6 +33,7 @@ const (
 	ModelsSelectorName = "schemas"
 	ModelsRefPrefix    = "#/components/schemas/"
 )
+const ApiVersion = "3.0.2"
 
 var (
 	template      = dict{}              // swag文档模板
@@ -42,105 +41,6 @@ var (
 	modelsDocMap  = map[string]dict{}   // swag的模型描述
 	templateBytes = make([]byte, 0)     // swag文档模板字节表示
 )
-
-// 422 表单验证错误模型
-var validationErrorDefinition = dict{
-	"title": "ValidationError",
-	"type":  "object",
-	"properties": dict{
-		"loc": dict{
-			"title": "Location",
-			"type":  "array",
-			"items": dict{"anyOf": []map[string]string{{"type": "string"}, {"type": "integer"}}},
-		},
-		"msg":  dict{"title": "Message", "type": "string"},
-		"type": dict{"title": "Error Type", "type": "string"},
-	},
-	"required": []string{"loc", "msg", "type"},
-}
-
-// 请求体相应体错误消息
-var validationErrorResponseDefinition = dict{
-	"title":    "HTTPValidationError",
-	"type":     "object",
-	"required": []string{"detail"},
-	"properties": dict{
-		"detail": dict{
-			"title": "Detail",
-			"type":  "array",
-			"items": dict{"$ref": godantic.RefPrefix + "ValidationError"},
-		},
-	},
-}
-
-// 自定义错误消息
-var customErrorDefinition = dict{
-	"title":    "CustomValidationError",
-	"required": []string{"error_code"},
-	"type":     "object",
-	"properties": dict{
-		"error_code": dict{
-			"title":       "ErrorCode",
-			"type":        "string",
-			"required":    true,
-			"description": "ErrorCode",
-		},
-		"ValidationError": dict{
-			"$ref":        "#/components/schemas/ValidationError",
-			"title":       "ValidationError",
-			"type":        "object",
-			"required":    false,
-			"description": "ValidationError",
-		},
-		"description": "CustomValidationError",
-	},
-}
-
-type OpenApi struct {
-	Info        *Info             `json:"info,omitempty" description:"联系信息"`
-	Tags        []Tag             `json:"tags" description:"标签"`
-	Servers     map[string]string `json:"servers" description:""`
-	Definitions map[string]any    `json:"definitions" description:"模型文档"`
-	Routes      []PathItem        `json:"routes" description:"路由列表,同一路由存在多个方法文档"`
-}
-
-func (o *OpenApi) UpdateDefinition(key string, value map[string]any) {
-
-}
-
-func (o *OpenApi) UpdateRoute(path string, value map[string]any) {
-
-}
-
-func (o *OpenApi) Components() (m map[string]map[string]any) {
-	m["schemas"] = o.Definitions
-	return
-}
-
-func (o *OpenApi) Paths() (m map[string]map[string]any) {
-	for i := 0; i < len(o.Routes); i++ {
-		m[o.Routes[i].Path] = o.Routes[i].Scheme()
-	}
-	return
-}
-
-func (o *OpenApi) Schema() (m map[string]any) {
-	m = map[string]any{"openapi": OpenApiVersion, "info": o.Info, "components": o.Components}
-	tags := make([]map[string]string, len(o.Tags))
-	if len(o.Servers) > 0 {
-		m["servers"] = o.Servers
-	}
-
-	for i := 0; i < len(o.Tags); i++ {
-		tags[i] = o.Tags[i].Schema()
-	}
-
-	m["tags"] = tags
-	m["components"] = o.Components()
-	m["paths"] = o.Paths()
-
-	return
-}
 
 // ------------------------------------------- 创建基础路由 -------------------------------------------
 
@@ -234,7 +134,7 @@ func RegisterSwagger(f *fiber.App, title, description, version string, license m
 
 	// openapi docs
 
-	template["openapi"] = OpenApiVersion
+	template["openapi"] = ApiVersion
 	template["info"] = info
 	template["servers"] = []dict{}
 	template["components"] = components

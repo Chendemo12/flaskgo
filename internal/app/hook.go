@@ -19,10 +19,10 @@ type HandlerFunc = func(s *Context) *Response
 type StackTraceHandlerFunc = func(c *fiber.Ctx, e any)
 
 // routeHandler 路由处理方法(装饰器实现)，用于请求体校验和返回体序列化，同时注入全局服务依赖,
-// 此方法接收一个业务层面的路由钩子方法handler，
-// 该方法有且仅有1个参数：flaskgo.Context(), 有且必须有一个返回值 *Response
+// 此方法接收一个业务层面的路由钩子方法 HandlerFunc，
+// 该方法有且仅有1个参数：&Context, 有且必须有一个返回值 *Response
 //
-// routeHandler 方法首先会new一个新的 flaskgo.Context, 并初始化请求体、路由参数、fiber.Ctx 和 flaskgo.Service
+// routeHandler 方法首先会申请一个 Context, 并初始化请求体、路由参数、fiber.Ctx
 // 之后会校验并绑定路由参数（包含路径参数和查询参数）是否正确，如果错误则直接返回422错误，反之会继续序列化并绑定请求体（如果存在）
 // 序列化成功之后会校验请求参数正确性（开关控制），校验通过后会接着将ctx传入handler
 // 执行handler之后将校验返回值（开关控制），并返回422或写入响应体。

@@ -1,5 +1,62 @@
 package openapi
 
+import (
+	"github.com/Chendemo12/flaskgo/internal/godantic"
+)
+
+// 422 表单验证错误模型
+var validationErrorDefinition = dict{
+	"title": "ValidationError",
+	"type":  "object",
+	"properties": dict{
+		"loc": dict{
+			"title": "Location",
+			"type":  "array",
+			"items": dict{"anyOf": []map[string]string{{"type": "string"}, {"type": "integer"}}},
+		},
+		"msg":  dict{"title": "Message", "type": "string"},
+		"type": dict{"title": "Error Type", "type": "string"},
+	},
+	"required": []string{"loc", "msg", "type"},
+}
+
+// 请求体相应体错误消息
+var validationErrorResponseDefinition = dict{
+	"title":    "HTTPValidationError",
+	"type":     "object",
+	"required": []string{"detail"},
+	"properties": dict{
+		"detail": dict{
+			"title": "Detail",
+			"type":  "array",
+			"items": dict{"$ref": godantic.RefPrefix + "ValidationError"},
+		},
+	},
+}
+
+// 自定义错误消息
+var customErrorDefinition = dict{
+	"title":    "CustomValidationError",
+	"required": []string{"error_code"},
+	"type":     "object",
+	"properties": dict{
+		"error_code": dict{
+			"title":       "ErrorCode",
+			"type":        "string",
+			"required":    true,
+			"description": "ErrorCode",
+		},
+		"ValidationError": dict{
+			"$ref":        "#/components/schemas/ValidationError",
+			"title":       "ValidationError",
+			"type":        "object",
+			"required":    false,
+			"description": "ValidationError",
+		},
+		"description": "CustomValidationError",
+	},
+}
+
 type Contact struct {
 	Name  string `json:"name" description:"姓名"`
 	Url   string `json:"url" description:"链接"`
@@ -54,7 +111,16 @@ type Reference struct {
 
 func (r Reference) Alias() string { return "$ref" + r.Ref }
 
+type Encoding struct {
+	ContentType   string
+	Headers       map[string]Header
+	Style         string
+	Explode       bool
+	AllowReserved bool
+}
+
 type MediaType struct {
+	Encoding map[string]Encoding
 }
 
 type ParameterInType string
@@ -149,23 +215,141 @@ type PathItem struct {
 
 func (p PathItem) Scheme() (m map[string]any) { return }
 
+type APIKeyIn string
+
+const (
+	APIKeyInQuery  APIKeyIn = "query"
+	APIKeyInHeader APIKeyIn = "header"
+	APIKeyInCookie APIKeyIn = "cookie"
+)
+
 type Components struct {
+	Responses     map[string]RefIface
+	Parameters    map[string]Reference
+	RequestBodies map[string]Reference
+	Headers       map[string]Reference
+	Links         map[string]Reference
 }
 
+// OpenApi 模型类
+type OpenApi struct {
+	Openapi     string
+	Info        *Info                  `json:"info,omitempty" description:"联系信息"`
+	Tags        []Tag                  `json:"tags" description:"标签"`
+	Servers     map[string]string      `json:"servers" description:""`
+	Definitions []godantic.SchemaIface `json:"definitions" description:"模型文档"`
+	Routes      []PathItem             `json:"routes" description:"路由列表,同一路由存在多个方法文档"`
+	cache       map[string]any
+}
+
+// AddDefinition 添加一个模型文档
+func (o *OpenApi) AddDefinition(model godantic.Iface) *OpenApi {
+	o.Definitions = append(o.Definitions, model)
+	return o
+}
+
+func (o *OpenApi) UpdateRoute(path string, value map[string]any) {
+
+}
+
+func (o *OpenApi) Components() (m map[string]map[string]any) {
+	schemas := make(map[string]any, len(o.Definitions)+3)
+
+	for _, define := range o.Definitions {
+		schemas[define.SchemaName()] = define.Schema()
+	}
+	// 记录内置错误类型文档
+	schemas["ValidationError"] = validationErrorDefinition
+	schemas["HTTPValidationError"] = validationErrorResponseDefinition
+	schemas["CustomValidationError"] = customErrorDefinition
+
+	m["schemas"] = schemas
+	return
+}
+
+func (o *OpenApi) Paths() (m map[string]map[string]any) {
+	for i := 0; i < len(o.Routes); i++ {
+		m[o.Routes[i].Path] = o.Routes[i].Scheme()
+	}
+	return
+}
+
+// CreateDocs 创建文档
+func (o *OpenApi) CreateDocs() map[string]any {
+	output := map[string]any{"openapi": o.Openapi, "info": o.Info}
+	tags := make([]map[string]string, len(o.Tags))
+	if len(o.Servers) > 0 {
+		output["servers"] = o.Servers
+	}
+
+	for i := 0; i < len(o.Tags); i++ {
+		tags[i] = o.Tags[i].Schema()
+	}
+
+	output["tags"] = tags
+	output["components"] = o.Components()
+	output["paths"] = o.Paths()
+
+	return output
+}
+
+// RecreateDocs 重建Swagger 文档
+func (o *OpenApi) RecreateDocs() *OpenApi {
+	o.cache = o.CreateDocs()
+	return o
+}
+
+// Schema Swagger 文档, 并非完全符合 OpenApi 文档规范
+func (o *OpenApi) Schema() map[string]any {
+	if _, ok := o.cache["components"]; !ok {
+		o.cache = o.CreateDocs()
+	}
+
+	return o.cache
+}
+
+func NewOpenApi(title, version, description string) *OpenApi {
+	return &OpenApi{
+		Openapi: ApiVersion,
+		Info: &Info{
+			Title:          title,
+			Version:        version,
+			Description:    description,
+			TermsOfService: "",
+			Contact: Contact{
+				Name:  "FlaskGo",
+				Url:   "github.com/Chendemo12/flaskgo",
+				Email: "chendemo12@gmail.com",
+			},
+			License: License{
+				Name: "FlaskGo",
+				Url:  "github.com/Chendemo12/flaskgo",
+			},
+		},
+		Tags:        make([]Tag, 0),
+		Servers:     map[string]string{},
+		Definitions: []godantic.SchemaIface{},
+		Routes:      make([]PathItem, 0),
+	}
+}
+
+//
+//// //
+//// // defines.go: 自定义类型, 用于辅助自动生成swagger文档及参数校验;
+//// //体
+//// // model.go: schema文档模型;
+//// package openapi
 ////
-//// defines.go: 自定义类型, 用于辅助自动生成swagger文档及参数校验;
-////体
-//// model.go: schema文档模型;
-//package openapi
-//
-//import (
-//	"github.com/gofiber/fiber/v2"
-//	"net/http"
-//	"reflect"
-//	"strconv"
-//	"strings"
-//)
-//
+//// import (
+////
+////	"github.com/gofiber/fiber/v2"
+////	"net/http"
+////	"reflect"
+////	"strconv"
+////	"strings"
+////
+//// )
+////
 //// RouteModelIface 模型接口
 //type RouteModelIface interface {
 //	BaseModelIface

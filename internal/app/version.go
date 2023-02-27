@@ -10,7 +10,7 @@
 package app
 
 const (
-	Version   = "0.2.10"
-	Copyright = "cowave"
-	Website   = "https://www.cowave.com"
+	Version   = "0.3.0"
+	Copyright = "chendemo12"
+	Website   = "https://github.com/Chendemo12"
 )

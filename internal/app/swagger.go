@@ -43,6 +43,8 @@ func MakeDefaultRespGroup(method string, model *openapi.RouteResp) []*openapi.Ro
 }
 
 func makeSwaggerDocs(f *FlaskGo) {
+	f.service.openApi = openapi.NewOpenApi(f.Title(), f.Version(), f.Description())
+
 	// 挂载模型文档
 	for _, router := range f.APIRouters() {
 		for _, route := range router.Routes() {

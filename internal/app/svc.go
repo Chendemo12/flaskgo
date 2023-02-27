@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/Chendemo12/flaskgo/internal/openapi"
 	"github.com/Chendemo12/functools/logger"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -161,6 +162,7 @@ type Service struct {
 	addr     string              `description:"绑定地址"`
 	ctx      CustomContextIface  `description:"上层自定义服务依赖"`
 	validate *validator.Validate `description:"请求体验证包"`
+	openApi  *openapi.OpenApi    `description:"模型文档"`
 }
 
 // Config 获取自定义配置文件
