@@ -7,7 +7,7 @@ var swaggerUiDefaultParameters = map[string]string{
 	"showCommonExtensions": "true",
 }
 
-func makeSwaggerUiHtml(title, openapiUrl, jsUrl, cssUrl, faviconUrl string) string {
+func MakeSwaggerUiHtml(title, openapiUrl, jsUrl, cssUrl, faviconUrl string) string {
 	indexPage := `
 	<!DOCTYPE html>
 	<html>
@@ -42,7 +42,7 @@ func makeSwaggerUiHtml(title, openapiUrl, jsUrl, cssUrl, faviconUrl string) stri
 	return indexPage
 }
 
-func makeRedocUiHtml(title, openapiUrl, jsUrl, faviconUrl string) string {
+func MakeRedocUiHtml(title, openapiUrl, jsUrl, faviconUrl string) string {
 	indexPage := `
 	<!DOCTYPE html>
 	<html>
@@ -77,7 +77,7 @@ func makeRedocUiHtml(title, openapiUrl, jsUrl, faviconUrl string) string {
 	return indexPage
 }
 
-func makeOauth2RedirectHtml() string {
+func MakeOauth2RedirectHtml() string {
 	// copied from https://github.com/swagger-api/swagger-ui/blob/v4.14.0/dist/oauth2-redirect.html
 	return `    
     html = """

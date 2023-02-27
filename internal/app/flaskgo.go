@@ -9,7 +9,6 @@ import (
 	"github.com/Chendemo12/functools/python"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
-	"go.uber.org/zap"
 	"log"
 	"net"
 	"net/http"
@@ -165,8 +164,8 @@ func (f *FlaskGo) initialize() *FlaskGo {
 	// 挂载自定义路由
 	f.mountUserRoutes()
 
-	// 创建swag文档, 必须等上层注册完路由之后才能调用
-	makeSwaggerDocs(f)
+	// 创建 OpenApi Swagger 文档, 必须等上层注册完路由之后才能调用
+	f.createOpenApiDoc()
 
 	return f
 }
@@ -368,7 +367,7 @@ func (f *FlaskGo) ActivateHotSwitch() *FlaskGo {
 // Deprecated: RunCronjob 启动定时任务, 此函数内部通过创建一个协程来执行任务，并且阻塞至 FlaskGo 完成初始化
 // @param  tasker   func(service CustomContextIface)  error  定时任务
 // @param  service  CustomContextIface                服务依赖
-func (f *FlaskGo) RunCronjob(tasker func(ctx *Service) error) *FlaskGo {
+func (f *FlaskGo) RunCronjob(_ func(ctx *Service) error) *FlaskGo {
 	return f
 }
 
@@ -410,10 +409,6 @@ func (f *FlaskGo) Run(host, port string) {
 		if event.Type == shutdownEvent {
 			event.Fc()
 		}
-	}
-
-	if l, ok := f.service.Logger().(*zap.SugaredLogger); ok {
-		_ = l.Sync()
 	}
 
 	// TODO：NotImplement 平滑关机

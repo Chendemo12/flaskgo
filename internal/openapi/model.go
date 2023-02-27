@@ -2,6 +2,7 @@ package openapi
 
 import (
 	"github.com/Chendemo12/flaskgo/internal/godantic"
+	"net/http"
 )
 
 // 422 表单验证错误模型
@@ -55,6 +56,16 @@ var customErrorDefinition = dict{
 		},
 		"description": "CustomValidationError",
 	},
+}
+
+func NewResponse(name string) []*Response {
+	r := make([]*Response, 3)
+	// TODO: 关联模型
+	r[0].Description = http.StatusText(http.StatusOK)
+	r[1].Description = http.StatusText(http.StatusUnprocessableEntity)
+	r[2].Description = http.StatusText(http.StatusNotFound) // TODO: 500? 404?
+
+	return r
 }
 
 type Contact struct {
@@ -112,7 +123,7 @@ type Reference struct {
 func (r Reference) Alias() string { return "$ref" + r.Ref }
 
 type Encoding struct {
-	ContentType   string
+	ContentType   string // "application/json" fiber.MIMEApplicationJSON
 	Headers       map[string]Header
 	Style         string
 	Explode       bool
@@ -134,10 +145,11 @@ const (
 
 // ParameterBase 各种参数的基类
 type ParameterBase struct {
-	Description string               `json:"description" description:"说明"`
-	Required    bool                 `json:"required" description:"是否必须"`
-	Deprecated  bool                 `json:"deprecated" description:"是否禁用"`
-	Content     map[string]MediaType `json:"content" description:""`
+	Description string `json:"description" description:"说明"`
+	Required    bool   `json:"required" description:"是否必须"`
+	Deprecated  bool   `json:"deprecated" description:"是否禁用"`
+	// TODO: what is this? maybe this is {"application/json": {"schema": "ref": "XXXX"}}
+	Content map[string]MediaType `json:"content" description:""`
 }
 
 // Parameter 查询参数或者路径参数
@@ -159,7 +171,6 @@ func (h Header) Alias() string { return "header" }
 // RequestBody 路由请求体
 type RequestBody struct {
 	ParameterBase
-	Content map[string]MediaType
 }
 
 type Link struct {
@@ -177,43 +188,48 @@ type Response struct {
 	Description string               `json:"description" description:"说明"`
 	Headers     map[string]RefIface  `json:"headers" description:""`
 	Content     map[string]MediaType `json:"content" description:""`
-	Links       map[string]RefIface  `json:"links" description:""`
+	Links       []*Link              `json:"links" description:""`
 }
 
 // Operation 路由HTTP方法: Get/Post/Patch/Delete 等操作方法
 type Operation struct {
-	Summary     string              `json:"summary" description:"摘要描述"`
-	Description string              `json:"description" description:"说明"`
-	Tags        []string            `json:"tags" description:"路由标签"`
-	OperationId string              `json:"operationId" description:"唯一ID"`
-	Parameters  map[string]any      `json:"parameters" description:"路由参数"`
-	RequestBody RequestBody         `json:"requestBody" description:"请求体"`
-	Response    map[string]Response `json:"response" description:"相应体"`
-	Deprecated  bool                `json:"deprecated" description:"是否禁用"`
-	Servers     []Server            `json:"servers" description:""`
+	Summary     string       `json:"summary" description:"摘要描述"`   // TODO: 多余
+	Description string       `json:"description" description:"说明"` // TODO: 多余
+	Tags        []string     `json:"tags" description:"路由标签"`
+	OperationId string       `json:"operationId" description:"唯一ID"`
+	Parameters  []*Parameter `json:"parameters" description:"查询参数"`
+	RequestBody *RequestBody `json:"requestBody" description:"请求体"`
+	Response    []*Response  `json:"response" description:"相应体"`
+	Deprecated  bool         `json:"deprecated" description:"是否禁用"`
+	Servers     []*Server    `json:"servers" description:""`
 }
 
 type PathItemParameterUnion interface {
 	Parameter | Reference
 }
 
+// PathItem 路由选项，由于同一个路由可以存在不同的操作方法，因此此选项可以存在多个 Operation
 type PathItem struct {
 	Path        string     `json:"path" description:"请求路由"`
-	Ref         string     `json:"ref" description:"关联项"`
+	Ref         *Reference `json:"ref" description:"关联的模型"`
 	Summary     string     `json:"summary" description:"摘要描述"`
 	Description string     `json:"description" description:"说明"`
-	Get         Operation  `json:"get" description:"GET方法"`
-	Put         Operation  `json:"put" description:"PUT方法"`
-	Post        Operation  `json:"post" description:"POST方法"`
-	Patch       Operation  `json:"patch" description:"PATCH方法"`
-	Delete      Operation  `json:"delete" description:"DELETE方法"`
-	Head        Operation  `json:"head" description:"header方法"`
-	Trace       Operation  `json:"trace" description:"trace方法"`
-	Servers     []Server   `json:"servers" description:""`
-	Parameters  []RefIface `json:"parameters" description:"路由参数"`
+	Get         *Operation `json:"get" description:"GET方法"`
+	Put         *Operation `json:"put" description:"PUT方法"`
+	Post        *Operation `json:"post" description:"POST方法"`
+	Patch       *Operation `json:"patch" description:"PATCH方法"`
+	Delete      *Operation `json:"delete" description:"DELETE方法"`
+	Head        *Operation `json:"head" description:"header方法"`
+	Trace       *Operation `json:"trace" description:"trace方法"`
+	Servers     []*Server  `json:"servers" description:""`
+	// 路径参数, 对于路径相同，方法不同的路由来说，其查询参数可以不一样，但其路径参数都是一样的
+	Parameters []*Parameter `json:"parameters" description:"路径参数"`
 }
 
-func (p PathItem) Scheme() (m map[string]any) { return }
+func (p PathItem) Scheme() (m map[string]any) {
+
+	return
+}
 
 type APIKeyIn string
 
@@ -238,7 +254,7 @@ type OpenApi struct {
 	Tags        []Tag                  `json:"tags" description:"标签"`
 	Servers     map[string]string      `json:"servers" description:""`
 	Definitions []godantic.SchemaIface `json:"definitions" description:"模型文档"`
-	Routes      []PathItem             `json:"routes" description:"路由列表,同一路由存在多个方法文档"`
+	Routes      []*PathItem            `json:"routes" description:"路由列表,同一路由存在多个方法文档"`
 	cache       map[string]any
 }
 
@@ -248,8 +264,17 @@ func (o *OpenApi) AddDefinition(model godantic.Iface) *OpenApi {
 	return o
 }
 
-func (o *OpenApi) UpdateRoute(path string, value map[string]any) {
+func (o *OpenApi) AddPathItem(item *PathItem) {
+	o.Routes = append(o.Routes, item)
+}
 
+func (o *OpenApi) QueryPathItem(path string) *PathItem {
+	for _, item := range o.Routes {
+		if item.Path == path {
+			return item
+		}
+	}
+	return nil
 }
 
 func (o *OpenApi) Components() (m map[string]map[string]any) {
