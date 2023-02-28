@@ -12,7 +12,8 @@ import (
 
 type dict map[string]any
 
-// Field 此数据模型的字段类型,对于 BaseModel 其字段仍然可能会 BaseModel,
+// Field 数据模型 BaseModel 的字段类型
+// 对于 BaseModel 其字段仍然可能会 BaseModel,
 // 但此类型不再递归记录,仅记录一个关联模型为基本
 type Field struct {
 	Name      string            `json:"name" description:"字段名称"`
@@ -21,7 +22,7 @@ type Field struct {
 	Anonymous bool              `json:"anonymous" description:"是否是嵌入字段"`
 	Tag       reflect.StructTag `json:"tag" description:"字段标签"`
 	ItemRef   string            `description:"子元素类型, 仅Type=array/object时有效"`
-	Type      reflect.Type      `description:"字段类型"`
+	RType     reflect.Type      `description:"反射字段类型"`
 }
 
 // Schema 生成字段的详细描述信息
@@ -61,7 +62,7 @@ type Field struct {
 //	}
 func (f *Field) Schema() (m map[string]any) {
 	// 最基础的属性，必须
-	tp := reflectKindToName(f.Type.Kind())
+	tp := reflectKindToName(f.RType.Kind())
 	m = dict{
 		"title":       f.Name,
 		"type":        tp,
@@ -79,7 +80,7 @@ func (f *Field) Schema() (m map[string]any) {
 
 	// 为不同的字段类型生成相应的描述
 	switch tp {
-	case IntegerName, NumberName: // 生成数字类型的最大最小值
+	case IntegerType, NumberType: // 生成数字类型的最大最小值
 		if lt := QueryFieldTag(f.Tag, "lt", ""); lt != "" {
 			m["maximum"], _ = strconv.Atoi(lt)
 		}
@@ -101,7 +102,7 @@ func (f *Field) Schema() (m map[string]any) {
 			m["minimum"], _ = strconv.Atoi(gt)
 		}
 
-	case StringName: // 生成字符串类型的最大最小长度
+	case StringType: // 生成字符串类型的最大最小长度
 		if lt := QueryFieldTag(f.Tag, "max", ""); lt != "" {
 			m["maxLength"], _ = strconv.Atoi(lt)
 		}
@@ -109,7 +110,7 @@ func (f *Field) Schema() (m map[string]any) {
 			m["minLength"], _ = strconv.Atoi(gt)
 		}
 
-	case ArrayName:
+	case ArrayType:
 		// 为数组类型生成子类型描述
 		if f.ItemRef != "" {
 			if strings.HasPrefix(f.ItemRef, RefPrefix) { // 数组子元素为关联类型
@@ -118,7 +119,7 @@ func (f *Field) Schema() (m map[string]any) {
 				m["items"] = map[string]string{"type": f.ItemRef}
 			}
 		} else { // 缺省为string
-			m["items"] = map[string]string{"type": StringName}
+			m["items"] = map[string]string{"type": StringType}
 		}
 		// 限制数组的长度
 		if lt := QueryFieldTag(f.Tag, "max", ""); lt != "" {
@@ -128,7 +129,7 @@ func (f *Field) Schema() (m map[string]any) {
 			m["minLength"], _ = strconv.Atoi(gt)
 		}
 
-	case ObjectName:
+	case ObjectType:
 		if f.ItemRef != "" { // 字段类型为自定义结构体，生成关联类型，此内部结构体已注册
 			m["$ref"] = f.ItemRef
 		}
@@ -146,7 +147,7 @@ func (f *Field) SchemaName(exclude ...bool) string { return f.Name }
 func (f *Field) SchemaDesc() string { return QueryFieldTag(f.Tag, "description", f.Name) }
 
 // SchemaType 模型类型
-func (f *Field) SchemaType() string { return reflectKindToName(f.Type.Kind()) }
+func (f *Field) SchemaType() string { return reflectKindToName(f.RType.Kind()) }
 
 // SchemaJson swagger文档字符串格式
 func (f *Field) SchemaJson() string {
@@ -162,7 +163,7 @@ func (f *Field) SchemaJson() string {
 func (f *Field) IsRequired() bool { return f.Exported && IsFieldRequired(f.Tag) }
 
 // IsArray 字段是否是数组类型
-func (f *Field) IsArray() bool { return reflectKindToName(f.Type.Kind()) == ArrayName }
+func (f *Field) IsArray() bool { return reflectKindToName(f.RType.Kind()) == ArrayType }
 
 // InnerSchema 内部字段模型文档, 全名:文档
 func (f *Field) InnerSchema() (m map[string]map[string]any) {
@@ -171,6 +172,9 @@ func (f *Field) InnerSchema() (m map[string]map[string]any) {
 }
 
 // BaseModel 基本数据模型, 对于上层的 app.Route 其请求和相应体都应为继承此结构体的结构体
+// 在 OpenApi 文档模型中,此模型的类型始终为 "object";
+// 此类型无需再次转换, 直接将其 Schema 文档添加到 openapi.OpenApi 的模型Definitions定义中,
+// 并在路由中通过引用关联模型
 type BaseModel struct {
 	once        *sync.Once `description:"由于 SchemaName 方法必定最先被调用,因此在此内部实例"`
 	fields      []*Field   `description:"结构体字段"`
@@ -194,7 +198,7 @@ func (b *BaseModel) init() {
 			Index:     i,
 			Name:      field.Name,
 			Tag:       field.Tag,
-			Type:      field.Type,
+			RType:     field.Type,
 			Exported:  unicode.IsUpper(rune(field.Name[0])),
 			Anonymous: field.Anonymous,
 		})
@@ -236,7 +240,7 @@ func (b *BaseModel) Dict(exclude []string, include map[string]any) (m map[string
 			continue
 		}
 
-		switch b.fields[i].Type.Kind() { // 获取字段定义的类型
+		switch b.fields[i].RType.Kind() { // 获取字段定义的类型
 
 		case reflect.Array, reflect.Slice:
 			m[b.fields[i].Name] = v.Field(b.fields[i].Index).Bytes()
@@ -344,6 +348,16 @@ func (b *BaseModel) Schema() (m map[string]any) {
 	return
 }
 
+// SchemaRef 模型引用文档
+//
+//	{
+//		"$ref": "#/components/schemas/HTTPValidationError"
+//	}
+func (b *BaseModel) SchemaRef() (m map[string]any) {
+	m[RefName] = RefPrefix + b.SchemaName()
+	return
+}
+
 // SchemaName 获取结构体的名称,默认包含包名
 // @param  exclude  []bool  是否排除包名LL
 func (b *BaseModel) SchemaName(exclude ...bool) string {
@@ -363,7 +377,7 @@ func (b *BaseModel) SchemaName(exclude ...bool) string {
 func (b *BaseModel) SchemaDesc() string { return "BaseModel" }
 
 // SchemaType 模型类型
-func (b *BaseModel) SchemaType() string { return ObjectName }
+func (b *BaseModel) SchemaType() OpenApiDataType { return ObjectType }
 
 // SchemaJson 输出为OpenAPI文档模型,字符串格式
 func (b *BaseModel) SchemaJson() string {
@@ -412,7 +426,7 @@ type ValidationError struct {
 	BaseModel
 	Ctx  map[string]any `json:"service" Description:"Service"`
 	Msg  string         `json:"msg" Description:"Message" binding:"required"`
-	Type string         `json:"type" Description:"Error Type" binding:"required"`
+	Type string         `json:"type" Description:"Error RType" binding:"required"`
 	Loc  []string       `json:"loc" Description:"Location" binding:"required"`
 }
 
@@ -425,12 +439,13 @@ func (v *ValidationError) Map() (m map[string]any) {
 	return
 }
 
-// QModel 查询参数或路径参数
+// QModel 查询参数或路径参数模型, 此类型会进一步转换为 openapi.Parameter
 type QModel struct {
 	Name     string            `json:"name,omitempty" description:"字段名称"`
 	Required bool              `json:"required,omitempty" description:"是否必须"`
-	InPath   bool              `json:"inPath,omitempty" description:"是否是路径参数"`
+	InPath   bool              `json:"in_path,omitempty" description:"是否是路径参数"`
 	Tag      reflect.StructTag `json:"tag,omitempty" description:"TAG"`
+	OType    OpenApiDataType   `json:"otype,omitempty" description:"openaapi 数据类型"`
 }
 
 // Schema 输出为OpenAPI文档模型,字典格式
@@ -449,6 +464,12 @@ func (q *QModel) Schema() (m map[string]any) {
 	return
 }
 
+// SchemaRef 模型引用文档
+func (q *QModel) SchemaRef() (m map[string]any) {
+	m[RefName] = RefPrefix + q.SchemaName()
+	return
+}
+
 // SchemaName 获取结构体的名称,默认包含包名
 func (q *QModel) SchemaName(exclude ...bool) string { return q.Name }
 
@@ -462,7 +483,7 @@ func (q *QModel) SchemaDesc() string {
 }
 
 // SchemaType 模型类型
-func (q *QModel) SchemaType() string { return StringName }
+func (q *QModel) SchemaType() OpenApiDataType { return StringType }
 
 // SchemaJson 输出为OpenAPI文档模型,字符串格式
 func (q *QModel) SchemaJson() string {

@@ -2,90 +2,29 @@ package openapi
 
 import (
 	"github.com/Chendemo12/flaskgo/internal/godantic"
-	"net/http"
 )
 
-// 422 表单验证错误模型
-var validationErrorDefinition = dict{
-	"title": "ValidationError",
-	"type":  "object",
-	"properties": dict{
-		"loc": dict{
-			"title": "Location",
-			"type":  "array",
-			"items": dict{"anyOf": []map[string]string{{"type": "string"}, {"type": "integer"}}},
-		},
-		"msg":  dict{"title": "Message", "type": "string"},
-		"type": dict{"title": "Error Type", "type": "string"},
-	},
-	"required": []string{"loc", "msg", "type"},
-}
-
-// 请求体相应体错误消息
-var validationErrorResponseDefinition = dict{
-	"title":    "HTTPValidationError",
-	"type":     "object",
-	"required": []string{"detail"},
-	"properties": dict{
-		"detail": dict{
-			"title": "Detail",
-			"type":  "array",
-			"items": dict{"$ref": godantic.RefPrefix + "ValidationError"},
-		},
-	},
-}
-
-// 自定义错误消息
-var customErrorDefinition = dict{
-	"title":    "CustomValidationError",
-	"required": []string{"error_code"},
-	"type":     "object",
-	"properties": dict{
-		"error_code": dict{
-			"title":       "ErrorCode",
-			"type":        "string",
-			"required":    true,
-			"description": "ErrorCode",
-		},
-		"ValidationError": dict{
-			"$ref":        "#/components/schemas/ValidationError",
-			"title":       "ValidationError",
-			"type":        "object",
-			"required":    false,
-			"description": "ValidationError",
-		},
-		"description": "CustomValidationError",
-	},
-}
-
-func NewResponse(name string) []*Response {
-	r := make([]*Response, 3)
-	// TODO: 关联模型
-	r[0].Description = http.StatusText(http.StatusOK)
-	r[1].Description = http.StatusText(http.StatusUnprocessableEntity)
-	r[2].Description = http.StatusText(http.StatusNotFound) // TODO: 500? 404?
-
-	return r
-}
-
+// Contact 联系方式, 显示在 info 字段内部
 type Contact struct {
-	Name  string `json:"name" description:"姓名"`
+	Name  string `json:"name" description:"姓名/名称"`
 	Url   string `json:"url" description:"链接"`
 	Email string `json:"email" description:"联系方式"`
 }
 
+// License 权利证书, 显示在 info 字段内部
 type License struct {
-	Name string `json:"name" description:"姓名"`
+	Name string `json:"name" description:"名称"`
 	Url  string `json:"url" description:"链接"`
 }
 
+// Info 文档说明信息
 type Info struct {
-	Title          string  `json:"title" description:"Title"`
-	Version        string  `json:"version" description:"程序版本号"`
-	Description    string  `json:"description" description:"说明"`
-	TermsOfService string  `json:"termsOfService" description:""`
+	Title          string  `json:"title" description:"显示在文档顶部的标题"`
+	Version        string  `json:"version" description:"显示在标题右上角的程序版本号"`
+	Description    string  `json:"description" description:"显示在标题下方的说明"`
 	Contact        Contact `json:"contact" description:"联系方式"`
 	License        License `json:"license" description:"许可证"`
+	TermsOfService string  `json:"termsOfService" description:"服务条款(不常用)"`
 }
 
 type Tag struct {
@@ -100,12 +39,14 @@ func (t Tag) Schema() map[string]string {
 	}
 }
 
+// ServerVariable 服务器变量(不常用)
 type ServerVariable struct {
 	Enum        []string `json:"enum" description:"可选项"`
 	Default     string   `json:"default" description:"默认值"`
 	Description string   `json:"description" description:"说明"`
 }
 
+// Server 服务器配置信息(不常用)
 type Server struct {
 	Url         string           `json:"url" description:"链接"`
 	Description string           `json:"description" description:"说明"`
@@ -116,22 +57,36 @@ type RefIface interface {
 	Alias() string
 }
 
+// Reference 引用模型,用于模型字段和路由之间互相引用
 type Reference struct {
-	Ref string `json:"ref" description:"关联项"`
+	// 关联模型, 取值为 ModelRefPrefix + modelName
+	Ref string `json:"$ref" description:"关联模型"`
 }
 
-func (r Reference) Alias() string { return "$ref" + r.Ref }
+func (r *Reference) Schema() map[string]any {
+	return map[string]any{ModelRefName: r.Ref}
+}
 
+// Encoding 编码(不常用)
 type Encoding struct {
 	ContentType   string // "application/json" fiber.MIMEApplicationJSON
-	Headers       map[string]Header
+	Headers       []Header
 	Style         string
 	Explode       bool
 	AllowReserved bool
 }
 
+// MediaType 媒体类型(不常用)
 type MediaType struct {
 	Encoding map[string]Encoding
+}
+
+// Header 请求头参数,通常与认证相关(不常用)
+type Header struct {
+	Description string               `json:"description" description:"说明"`
+	Required    bool                 `json:"required" description:"是否必须"`
+	Deprecated  bool                 `json:"deprecated" description:"是否禁用"`
+	Content     map[string]MediaType `json:"content" description:""`
 }
 
 type ParameterInType string
@@ -145,32 +100,90 @@ const (
 
 // ParameterBase 各种参数的基类
 type ParameterBase struct {
-	Description string `json:"description" description:"说明"`
-	Required    bool   `json:"required" description:"是否必须"`
-	Deprecated  bool   `json:"deprecated" description:"是否禁用"`
-	// TODO: what is this? maybe this is {"application/json": {"schema": "ref": "XXXX"}}
-	Content map[string]MediaType `json:"content" description:""`
+	Description string    `json:"description" description:"说明"`
+	Required    bool      `json:"required" description:"是否必须"`
+	Deprecated  bool      `json:"deprecated" description:"是否禁用"`
+	Schema      Reference `json:"schema" description:"模型引用信息"`
 }
 
-// Parameter 查询参数或者路径参数
+// Parameter 路径参数或者查询参数
 type Parameter struct {
 	ParameterBase
 	Name string          `json:"name" description:"名称"`
 	In   ParameterInType `json:"in" description:"参数位置"`
 }
 
-func (p Parameter) Alias() string { return "" }
-
-// Header 请求头参数,通常与认证相关
-type Header struct {
-	ParameterBase
+type RequestBodyContentSchema interface {
+	Schema() map[string]any
 }
 
-func (h Header) Alias() string { return "header" }
+// BaseRequestBodyContentSchema 适用于请求体是基本数据类型的类型
+type BaseRequestBodyContentSchema struct {
+	Title string                   `json:"title" description:"标题"`
+	Type  godantic.OpenApiDataType `json:"type" description:"模型类型"`
+}
+
+func (s *BaseRequestBodyContentSchema) Schema() map[string]any {
+	return map[string]any{
+		"title": s.Title,
+		"type":  s.Type,
+	}
+}
+
+// ArrayRequestBodyContentSchema 适用于请求体是数组的类型
+type ArrayRequestBodyContentSchema struct {
+	BaseRequestBodyContentSchema
+	Items Reference `json:"items" description:"子项目"`
+}
+
+func (s *ArrayRequestBodyContentSchema) Schema() map[string]any {
+	return map[string]any{
+		"title": s.Title,
+		"type":  godantic.ArrayType,
+		"items": s.Items.Schema(),
+	}
+}
+
+// ObjectRequestBodyContentSchema 适用于请求体是struct的类型
+type ObjectRequestBodyContentSchema struct {
+	BaseRequestBodyContentSchema
+	Reference
+}
+
+func (s *ObjectRequestBodyContentSchema) Schema() map[string]any {
+	return map[string]any{
+		"title":      s.Title,
+		"type":       godantic.ObjectType,
+		ModelRefName: s.Ref,
+	}
+}
+
+// MakeRequestContent 构建请求体文档内容
+func MakeRequestContent(mimeType ApplicationMIMEType, schema RequestBodyContentSchema) map[ApplicationMIMEType]any {
+	m := make(map[ApplicationMIMEType]any)
+	m[mimeType] = map[string]any{
+		"schema": schema.Schema(),
+	}
+	return m
+}
 
 // RequestBody 路由请求体
 type RequestBody struct {
-	ParameterBase
+	// 请求体模型文档
+	// 形如: 可通过函数 MakeRequestContent 构建
+	//	{
+	//		"application/json": {
+	//			"schema": {
+	//				"title": "Response Set Svn Macs Api Rcst Network Svnmacs Post",
+	//				"type": "array",
+	//				"items": {
+	//					"$ref": "#/components/schemas/SvnMac"
+	//				}
+	//			}
+	//		}
+	//	}
+	Content  map[string]any `json:"content" description:"请求体内容"`
+	Required bool           `json:"required" description:"是否必须"`
 }
 
 type Link struct {
@@ -434,7 +447,7 @@ func NewOpenApi(title, version, description string) *OpenApi {
 //	fields := make(dict, 0)       // 属性字段
 //	// 字段详细描述信息中的 "required"属性 为 openapi 规范要求，用于在字段胖显式标明 ”字段必须“
 //	// 与此对应的为 模型详细信息中的 "required"数组为 FastApi 文档的特殊标记，用于在必须字段未填写便提交请求时，弹出 “未填提示”
-//	mp = dict{"title": m.Title(), "required": &required, "type": godantic.ObjectName, "properties": &fields}
+//	mp = dict{"title": m.Title(), "required": &required, "type": godantic.ObjectType, "properties": &fields}
 //
 //	if m.Description == "" {
 //		mp["description"] = strings.ToLower(m.Name)
@@ -458,7 +471,7 @@ func NewOpenApi(title, version, description string) *OpenApi {
 //type RModelField struct {
 //	Name        string            // 字段名称,非空
 //	Tag         reflect.StructTag // binding:"required" 标记一个字段是必须的
-//	Type        string            // swag数据类型
+//	RType        string            // swag数据类型
 //	ItemRef     string            // 子元素类型, 仅Type=array/object时有效
 //	ReflectKind reflect.Kind      // 数据类型
 //}
@@ -508,12 +521,12 @@ func NewOpenApi(title, version, description string) *OpenApi {
 //	// 最基础的属性，必须
 //	mp = dict{
 //		"title":       p.Title(),
-//		"type":        p.Type,
+//		"type":        p.RType,
 //		"required":    p.IsRequired(),
 //		"description": QueryFieldTag(p.Tag, "description", p.Name),
 //	}
 //	// 生成默认值
-//	if v := GetDefaultV(p.Tag, p.Type); v != nil {
+//	if v := GetDefaultV(p.Tag, p.RType); v != nil {
 //		mp["default"] = v
 //	}
 //	// 生成字段的枚举值
@@ -522,9 +535,9 @@ func NewOpenApi(title, version, description string) *OpenApi {
 //	}
 //
 //	// 为不同的字段类型生成相应的描述
-//	switch p.Type {
+//	switch p.RType {
 //
-//	case godantic.IntegerName, godantic.NumberName: // 生成数字类型的最大最小值
+//	case godantic.IntegerType, godantic.NumberType: // 生成数字类型的最大最小值
 //		if lt := QueryFieldTag(p.Tag, "lt", ""); lt != "" {
 //			mp["maximum"], _ = strconv.Atoi(lt)
 //		}
@@ -546,7 +559,7 @@ func NewOpenApi(title, version, description string) *OpenApi {
 //			mp["minimum"], _ = strconv.Atoi(gt)
 //		}
 //
-//	case godantic.StringName: // 生成字符串类型的最大最小长度
+//	case godantic.StringType: // 生成字符串类型的最大最小长度
 //		if lt := QueryFieldTag(p.Tag, "max", ""); lt != "" {
 //			mp["maxLength"], _ = strconv.Atoi(lt)
 //		}
@@ -554,7 +567,7 @@ func NewOpenApi(title, version, description string) *OpenApi {
 //			mp["minLength"], _ = strconv.Atoi(gt)
 //		}
 //
-//	case godantic.ArrayName:
+//	case godantic.ArrayType:
 //		// 为数组类型生成子类型描述
 //		if p.ItemRef != "" {
 //			if strings.HasPrefix(p.ItemRef, ModelsRefPrefix) { // 数组子元素为关联类型
@@ -563,7 +576,7 @@ func NewOpenApi(title, version, description string) *OpenApi {
 //				mp["items"] = map[string]string{"type": p.ItemRef}
 //			}
 //		} else { // 缺省为string
-//			mp["items"] = map[string]string{"type": godantic.StringName}
+//			mp["items"] = map[string]string{"type": godantic.StringType}
 //		}
 //		// 限制数组的长度
 //		if lt := QueryFieldTag(p.Tag, "max", ""); lt != "" {
@@ -573,7 +586,7 @@ func NewOpenApi(title, version, description string) *OpenApi {
 //			mp["minLength"], _ = strconv.Atoi(gt)
 //		}
 //
-//	case godantic.ObjectName:
+//	case godantic.ObjectType:
 //		if p.ItemRef != "" { // 字段类型为自定义结构体，生成关联类型，此内部结构体已注册
 //			mp["$ref"] = p.ItemRef
 //		}
@@ -614,14 +627,14 @@ func NewOpenApi(title, version, description string) *OpenApi {
 //	if q.InPath { // 作为路径参数
 //		mp = dict{
 //			"name":     q.Name,
-//			"schema":   dict{"title": q.Title(), "type": godantic.StringName},
+//			"schema":   dict{"title": q.Title(), "type": godantic.StringType},
 //			"required": q.Required,
 //			"in":       "path",
 //		}
 //	} else {
 //		mp = dict{
 //			"name":        QueryJsonName(q.Tag, q.Title()),
-//			"schema":      dict{"title": q.Title(), "type": godantic.StringName},
+//			"schema":      dict{"title": q.Title(), "type": godantic.StringType},
 //			"required":    q.IsRequired(),
 //			"description": QueryFieldTag(q.Tag, "description", q.Name),
 //			"in":          "query",
@@ -653,7 +666,7 @@ func NewOpenApi(title, version, description string) *OpenApi {
 //func (r RouteModel) Schema() (mp map[string]any) {
 //	if r.RetArray {
 //		mp = dict{
-//			"type":  godantic.ArrayName,
+//			"type":  godantic.ArrayType,
 //			"items": map[string]string{"$ref": ModelsRefPrefix + r.Model.String()},
 //		}
 //	} else {

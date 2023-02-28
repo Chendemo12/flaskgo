@@ -19,7 +19,7 @@ import (
 //
 // // basicTypeToModel 转换基本的数据类型为 RouteModel , 此返回值应仅用于判断，不应直接修改返回
 //
-//	func basicTypeToModel(rt reflect.Type) (RModelField, error) {
+//	func basicTypeToModel(rt reflect.RType) (RModelField, error) {
 //		switch rt.Kind() {
 //
 //		// 此处类型用于实际接口返回为内置类型的常量或者变量
@@ -61,9 +61,9 @@ import (
 //	}
 //
 // // arrayToModel 从数组类型中生成数据模型, 支持数组字段嵌套数组
-// // @param  rt  reflect.Type  数组类型
+// // @param  rt  reflect.RType  数组类型
 //
-//	func arrayToModel(rt reflect.Type) *RModel {
+//	func arrayToModel(rt reflect.RType) *RModel {
 //		// 直接生成子元素的文档描述，并挂载到 modelsDocMap
 //		elemType := rt.Elem()
 //		if elemType.Kind() == reflect.Pointer {
@@ -73,10 +73,10 @@ import (
 //	}
 //
 // // innerStructSchema 递归生成对象的文档树并直接添加到 modelsDocMap
-// // @param   rt  reflect.Type  数组内部元素的类型  或  结构体的字段类型
+// // @param   rt  reflect.RType  数组内部元素的类型  或  结构体的字段类型
 // // @return  RouteModelIface 返回模型的关联文档
 //
-//	func innerStructSchema(rt reflect.Type) *RModel {
+//	func innerStructSchema(rt reflect.RType) *RModel {
 //		if rt.Kind() == reflect.Pointer { // 结构体字段为指针类型
 //			rt = rt.Elem()
 //		}
@@ -86,7 +86,7 @@ import (
 //		// 此类型为基本数据类型，或递归调用的字段为一个基本类型
 //		bt, err := basicTypeToModel(rt)
 //		if err == nil {
-//			modelField := &RModelField{Name: rt.String(), Tag: bt.Tag, Type: bt.Type}
+//			modelField := &RModelField{Name: rt.String(), Tag: bt.Tag, RType: bt.RType}
 //			rm.Fields = append(rm.Fields, modelField)
 //			return rm
 //		}
@@ -98,38 +98,38 @@ import (
 //			}
 //
 //			// 处理匿名结构体
-//			if field.Anonymous && field.Type.Kind() == reflect.Struct {
+//			if field.Anonymous && field.RType.Kind() == reflect.Struct {
 //				// 跳过空匿名结构体，比如 BaseModel
-//				if field.Type.NumField() == 0 {
+//				if field.RType.NumField() == 0 {
 //					continue
 //				}
 //			}
 //
 //			// 仅导出字段可用
-//			modelField := &RModelField{Name: field.Name, Tag: field.Tag, Type: reflectKindToName(field.Type.Kind())}
+//			modelField := &RModelField{Name: field.Name, Tag: field.Tag, RType: reflectKindToName(field.RType.Kind())}
 //
-//			bt, err := basicTypeToModel(field.Type)
+//			bt, err := basicTypeToModel(field.RType)
 //			// 字段为自定义类型，直接挂载字段后并关联类型
 //			if err != nil {
-//				switch field.Type.Kind() {
+//				switch field.RType.Kind() {
 //				case reflect.Pointer:
-//					modelField.ItemRef = ModelsRefPrefix + field.Type.Elem().String()
-//					b := innerStructSchema(field.Type)
+//					modelField.ItemRef = ModelsRefPrefix + field.RType.Elem().String()
+//					b := innerStructSchema(field.RType)
 //					AddModelDoc(&RouteModel{Model: b, Struct: nil, RetArray: true})
 //
 //				case reflect.Struct:
-//					modelField.ItemRef = ModelsRefPrefix + field.Type.String()
-//					b := innerStructSchema(field.Type)
+//					modelField.ItemRef = ModelsRefPrefix + field.RType.String()
+//					b := innerStructSchema(field.RType)
 //					AddModelDoc(&RouteModel{Model: b, Struct: nil, RetArray: true})
 //
 //				case reflect.Array, reflect.Slice: // 字段为数组类型，递归调用
-//					b := innerStructSchema(field.Type.Elem())
-//					elemType := reflectKindToName(field.Type.Elem().Kind())
+//					b := innerStructSchema(field.RType.Elem())
+//					elemType := reflectKindToName(field.RType.Elem().Kind())
 //
 //					switch elemType {
 //					case godantic.ObjectName, godantic.ArrayName:
 //						// 对于 []struct{} 类型的字段，关联其模型连接
-//						modelField.ItemRef = ModelsRefPrefix + field.Type.Elem().String()
+//						modelField.ItemRef = ModelsRefPrefix + field.RType.Elem().String()
 //					default:
 //						// 对于 []string 类型的字段，直接标注内部元素的基本类型
 //						modelField.ItemRef = elemType
@@ -140,7 +140,7 @@ import (
 //				}
 //
 //			} else { // 字段为 int, string 等基本类型
-//				modelField.Type = bt.Type
+//				modelField.RType = bt.RType
 //			}
 //
 //			rm.Fields = append(rm.Fields, modelField)

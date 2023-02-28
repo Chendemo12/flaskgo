@@ -2,13 +2,18 @@ package godantic
 
 var MethodsWithBody = []string{"GET", "HEAD", "POST", "PUT", "DELETE", "PATCH"}
 
-const RefPrefix = "#/components/schemas/"
+const (
+	RefName   = "$ref"
+	RefPrefix = "#/components/schemas/"
+)
+
+type OpenApiDataType string
 
 const (
-	IntegerName = "integer"
-	NumberName  = "number"
-	StringName  = "string"
-	ArrayName   = "array"
-	ObjectName  = "object"
-	BooleanName = "boolean"
+	IntegerType OpenApiDataType = "integer"
+	NumberType  OpenApiDataType = "number"
+	StringType  OpenApiDataType = "string"
+	ArrayType   OpenApiDataType = "array"
+	ObjectType  OpenApiDataType = "object"
+	BoolType    OpenApiDataType = "boolean"
 )

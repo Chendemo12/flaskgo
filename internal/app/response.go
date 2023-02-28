@@ -39,7 +39,7 @@ type Response struct {
 type ValidationError struct {
 	Ctx  map[string]any `json:"service" Description:"Service"`
 	Msg  string         `json:"msg" Description:"Message" binding:"required"`
-	Type string         `json:"type" Description:"Error Type" binding:"required"`
+	Type string         `json:"type" Description:"Error RType" binding:"required"`
 	Loc  []string       `json:"loc" Description:"Location" binding:"required"`
 }
 

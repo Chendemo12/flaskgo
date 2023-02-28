@@ -3,12 +3,14 @@ package godantic
 type SchemaIface interface {
 	// Schema 输出为OpenAPI文档模型,字典格式
 	Schema() (m map[string]any)
+	// SchemaRef 模型引用文档
+	SchemaRef() (m map[string]any)
 	// SchemaName 获取结构体的名称,默认包含包名
 	SchemaName(exclude ...bool) string
 	// SchemaDesc 结构体文档注释
 	SchemaDesc() string
 	// SchemaType 模型类型
-	SchemaType() string
+	SchemaType() OpenApiDataType
 	// SchemaJson 输出为OpenAPI文档模型,字符串格式
 	SchemaJson() string
 	// InnerSchema 内部字段模型文档, 全名:文档

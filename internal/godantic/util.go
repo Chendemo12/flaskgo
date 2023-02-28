@@ -13,18 +13,18 @@ func reflectKindToName(kind reflect.Kind) (name string) {
 	switch kind {
 
 	case reflect.Array, reflect.Slice, reflect.Chan:
-		name = ArrayName
+		name = ArrayType
 	case reflect.String:
-		name = StringName
+		name = StringType
 	case reflect.Bool:
-		name = BooleanName
+		name = BoolType
 	default:
 		if reflect.Bool < kind && kind <= reflect.Uint64 {
-			name = IntegerName
+			name = IntegerType
 		} else if reflect.Float32 <= kind && kind <= reflect.Complex128 {
-			name = NumberName
+			name = NumberType
 		} else {
-			name = ObjectName
+			name = ObjectType
 		}
 	}
 
@@ -55,11 +55,11 @@ func GetDefaultV(tag reflect.StructTag, swagType string) (v any) {
 
 		case "string":
 			v = defaultV
-		case IntegerName:
+		case IntegerType:
 			v, _ = strconv.Atoi(defaultV)
-		case NumberName:
+		case NumberType:
 			v, _ = strconv.ParseFloat(defaultV, 64)
-		case BooleanName:
+		case BoolType:
 			v, _ = strconv.ParseBool(defaultV)
 		default:
 			v = defaultV
@@ -73,7 +73,7 @@ func IsArray(object any) bool {
 	if object == nil {
 		return false
 	}
-	return reflectKindToName(reflect.TypeOf(object).Kind()) == ArrayName
+	return reflectKindToName(reflect.TypeOf(object).Kind()) == ArrayType
 }
 
 // QueryFieldTag 查找struct字段的Tag
