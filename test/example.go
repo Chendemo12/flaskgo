@@ -71,7 +71,7 @@ type SimpleForm struct {
 	Age  int    `json:"age" description:"年龄" default:"23" gte:"50" validate:"required"`
 }
 
-func (s SimpleForm) SchemaDesc() string { return "简单的表单" }
+func (s *SimpleForm) SchemaDesc() string { return "简单的表单" }
 
 type Step struct {
 	Click string `json:"click"`
@@ -125,13 +125,16 @@ func makeRouter() *flaskgo.Router {
 	router := flaskgo.APIRouter("/api/device", []string{"Tunnel"})
 	{
 		router.POST(
-			"/simple/:name/:age?", &SimpleForm{}, &SimpleForm{}, "提交一个个人信息表单", getSimpleFrom,
-		).SetQueryParams(map[string]bool{"company": true, "department": false})
+			"/simple/:name/:age?",
+			&SimpleForm{}, &SimpleForm{},
+			"提交一个个人信息表单",
+			getSimpleFrom,
+		)
 
 		//router.GET(
 		//	"/form/:name", ExampleForm{}, "获得一个随机表单",
 		//	func(s *flaskgo.Context) any {
-		//		return ExampleForm{Name: s.PathFields["name"]}
+		//		return ExampleForm{name: s.PathFields["name"]}
 		//	})
 		//
 		//router.POST("/tunnel/:no", TunnelWorkParams{}, flaskgo.Int32, "设置通道工作参数", makeTunnelWork).

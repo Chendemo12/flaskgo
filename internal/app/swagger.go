@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"github.com/Chendemo12/flaskgo/internal/core"
 	"github.com/Chendemo12/flaskgo/internal/godantic"
 	"github.com/Chendemo12/flaskgo/internal/mode"
@@ -23,6 +24,7 @@ func (f *FlaskGo) createOpenApiDoc() {
 		return
 	}
 
+	f.service.openApi = openapi.NewOpenApi(f.title, f.version, f.Description())
 	f.createDefines()
 	f.createPaths()
 	f.createSwaggerRoutes()
@@ -35,7 +37,7 @@ func (f *FlaskGo) createSwaggerRoutes() {
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTML)
 		return c.SendString(openapi.MakeSwaggerUiHtml(
 			f.title,
-			openapi.OpenapiUrl,
+			openapi.JsonUrl,
 			openapi.SwaggerJsUrl,
 			openapi.SwaggerCssUrl,
 			openapi.SwaggerFaviconUrl,
@@ -47,7 +49,7 @@ func (f *FlaskGo) createSwaggerRoutes() {
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTML)
 		return c.SendString(openapi.MakeRedocUiHtml(
 			f.title,
-			openapi.OpenapiUrl,
+			openapi.JsonUrl,
 			openapi.RedocJsUrl,
 			openapi.RedocFaviconUrl,
 		))
@@ -57,7 +59,7 @@ func (f *FlaskGo) createSwaggerRoutes() {
 	f.engine.Get("/openapi.json", func(c *fiber.Ctx) error {
 		c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
 		//return c.Status(fiber.StatusOK).SendString(templateString)
-		return c.Status(fiber.StatusOK).JSON(f.service.openApi.Schema())
+		return c.Status(fiber.StatusOK).SendStream(bytes.NewReader(f.service.openApi.Schema()))
 	})
 }
 
@@ -106,21 +108,40 @@ func routeToPathItem(router *Router, route *Route, api *openapi.OpenApi) {
 	// 构造路径参数
 	pathParams := make([]*openapi.Parameter, len(route.PathFields))
 	for no, q := range route.PathFields {
-		pathParams[no].Name = q.Name
-		pathParams[no].In = openapi.InPath
-		pathParams[no].Description = q.SchemaName()
-		pathParams[no].Deprecated = route.deprecated
-		pathParams[no].Required = q.IsRequired()
+		p := &openapi.Parameter{
+			ParameterBase: openapi.ParameterBase{
+				Description: q.SchemaDesc(),
+				Required:    q.IsRequired(),
+				Deprecated:  route.deprecated,
+				Schema: openapi.Reference{
+					Ref: openapi.ModelRefPrefix + q.SchemaName(),
+				},
+			},
+			Name: q.Name,
+			In:   openapi.InPath,
+		}
+
+		pathParams[no] = p
 	}
+
+	println(python.Repr(pathParams[0]))
 
 	// 构造查询参数
 	queryParams := make([]*openapi.Parameter, len(route.QueryFields))
 	for no, q := range route.QueryFields {
-		queryParams[no].Name = q.Name
-		queryParams[no].In = openapi.InQuery
-		queryParams[no].Description = q.SchemaName()
-		queryParams[no].Deprecated = route.deprecated
-		queryParams[no].Required = q.IsRequired()
+		p := &openapi.Parameter{
+			ParameterBase: openapi.ParameterBase{
+				Description: q.SchemaDesc(),
+				Required:    q.IsRequired(),
+				Deprecated:  route.deprecated,
+				Schema: openapi.Reference{
+					Ref: openapi.ModelRefPrefix + q.SchemaName(),
+				},
+			},
+			Name: q.Name,
+			In:   openapi.InQuery,
+		}
+		queryParams[no] = p
 	}
 
 	// 构造操作符
@@ -129,15 +150,10 @@ func routeToPathItem(router *Router, route *Route, api *openapi.OpenApi) {
 		Description: route.Description,
 		Tags:        route.Tags,
 		Parameters:  append(pathParams, queryParams...),
-		RequestBody: openapi.MakeDataModelContent(openapi.MIMEApplicationJSON, ObjectRequestBodyContentSchema),
-		Response:    openapi.NewResponse(route.ResponseModel.String()), // TODO: ?
+		RequestBody: routeRequestModelToOpenapiResponse(route.RequestModel),
+		Responses:   routeResponseModelToOpenapiResponse(route.ResponseModel),
 		Deprecated:  route.deprecated,
-		Servers:     nil,
 	}
-	operation.RequestBody.Deprecated = route.deprecated
-	operation.RequestBody.Description = route.RequestModel.SchemaDesc()
-	operation.RequestBody.Required = route.RequestModel.IsRequired()
-	operation.RequestBody.Content = route.RequestModel.Ref()
 
 	// 绑定到操作方法
 	switch route.Method {
@@ -160,113 +176,54 @@ func routeToPathItem(router *Router, route *Route, api *openapi.OpenApi) {
 	}
 }
 
-//func MakeDefaultRespGroup(method string, model *openapi.RouteResp) []*openapi.RouteResp {
-//	group := []*openapi.RouteResp{
-//		{
-//			StatusCode: http.StatusNotFound,
-//			Body: &openapi.RouteModel{
-//				Model:  openapi.String,
-//				Struct: openapi.RModelField{},
-//			},
-//		},
-//	}
-//
-//	switch method {
-//	case http.MethodGet, http.MethodDelete:
-//		group = append(group, model)
-//
-//	case http.MethodPost, http.MethodPatch, http.MethodPut:
-//		group = append(group, model, &openapi.RouteResp{ // 422请求参数校验错误返回实例
-//			StatusCode: http.StatusUnprocessableEntity,
-//			Body:       validationErrorModel,
-//		})
-//	}
-//
-//	return group
-//}
-//
-//func makeSwaggerDocs(f *FlaskGo) {
-//	f.service.openApi = openapi.NewOpenApi(f.Title(), f.Version(), f.Description())
-//
-//	// 挂载模型文档
-//	for _, router := range f.APIRouters() {
-//		for _, route := range router.Routes() {
-//			// 挂载 请求体模型文档
-//			openapi.AddModelDoc(route.RequestModel.SchemaName(), route.RequestModel.Schema())
-//			openapi.AddModelDoc(route.ResponseModel.SchemaName(), route.ResponseModel.Schema())
-//
-//			// 挂载内部模型
-//			for name, model := range route.RequestModel.InnerSchema() {
-//				openapi.AddModelDoc(name, model)
-//			}
-//			for name, model := range route.ResponseModel.InnerSchema() {
-//				openapi.AddModelDoc(name, model)
-//			}
-//		}
-//	}
-//
-//	for _, router := range f.APIRouters() {
-//		for _, route := range router.Routes() {
-//			path := CombinePath(router.Prefix, route.RelativePath)
-//			openapi.AddPathDoc(path, route)
-//		}
-//	}
-//
-//	// 存储全部的路由
-//	routeInsGroups := make([]*openapi.RouteInsGroup, 0)
-//
-//	routesMap := make(map[string][]*Route)
-//	for _, router := range f.APIRouters() {
-//		for _, route := range router.Routes() {
-//			// 挂载 请求体模型文档
-//			openapi.AddModelDoc(route.RequestModel.SchemaName(), route.RequestModel.Schema())
-//
-//			path := CombinePath(router.Prefix, route.RelativePath)
-//			group := &openapi.RouteInsGroup{Path: path}
-//			routeInsGroups = append(routeInsGroups, group)
-//			routesMap[path] = append(routesMap[path], route)
-//		}
-//	}
-//
-//	// 扫描注册全部的请求头和响应体模型，以及路由对象
-//	for path, routes := range routesMap {
-//		for _, route := range routes {
-//			ins := &openapi.RouteInstance{
-//				Method:       route.Method,
-//				Path:         strings.Split(path, RouteSeparator)[0],
-//				Summary:      route.Summary,
-//				Description:  route.Description,
-//				Tags:         route.Tags,
-//				PathFields:   route.PathFields,
-//				QueryFields:  route.QueryFields,
-//				RequestModel: route.RequestModel,
-//				RespGroup: MakeDefaultRespGroup(route.Method, &openapi.RouteResp{
-//					Body:       route.ResponseModel,
-//					StatusCode: http.StatusOK,
-//				}),
-//			}
-//
-//			for i := 0; i < len(routeInsGroups); i++ {
-//				if routeInsGroups[i].Path == path {
-//					routeInsGroups[i].InsArray = append(routeInsGroups[i].InsArray, ins)
-//				}
-//			}
-//		}
-//	}
-//
-//	for _, group := range routeInsGroups {
-//		openapi.AddPathDoc(group.Path, group.Swag())
-//	}
-//
-//	// 不允许创建swag文档
-//	if python.All(!mode.IsDebug(), core.SwaggerDisabled) {
-//		return
-//	}
-//
-//	openapi.RegisterSwagger(
-//		f.engine, f.Title(),
-//		f.Description(),
-//		f.version+" | FlaskGo: "+Version,
-//		map[string]string{"name": Copyright, "url": Website},
-//	)
-//}
+// 将路由中的 RequestBody 转换成 openapi 的返回体
+func routeRequestModelToOpenapiResponse(m godantic.Iface) map[openapi.ApplicationMIMEType]any {
+	switch m.SchemaType() {
+	case godantic.ArrayType:
+		return openapi.MakeDataModelContent(
+			openapi.MIMEApplicationJSON,
+			openapi.ArrayRequestBodyContentSchema{
+				BaseRequestBodyContentSchema: openapi.BaseRequestBodyContentSchema{
+					Title: m.SchemaName(),
+				},
+				Items: openapi.Reference{
+					Ref: openapi.ModelRefPrefix + m.SchemaName(),
+				},
+			},
+		)
+	case godantic.ObjectType:
+		return openapi.MakeDataModelContent(
+			openapi.MIMEApplicationJSON,
+			openapi.ObjectRequestBodyContentSchema{
+				BaseRequestBodyContentSchema: openapi.BaseRequestBodyContentSchema{
+					Title: m.SchemaName(),
+				},
+				Reference: openapi.Reference{
+					Ref: openapi.ModelRefPrefix + m.SchemaName(),
+				},
+			},
+		)
+
+	default:
+		return openapi.MakeDataModelContent(
+			openapi.MIMEApplicationJSON,
+			openapi.BaseRequestBodyContentSchema{
+				Title: m.SchemaName(),
+				Type:  m.SchemaType(),
+			},
+		)
+	}
+}
+
+// 将路由中的 ResponseBody 转换成 openapi 的返回体
+func routeResponseModelToOpenapiResponse(m godantic.Iface) map[int]*openapi.Response {
+	return openapi.MakeOperationResponses(openapi.ObjectRequestBodyContentSchema{
+		BaseRequestBodyContentSchema: openapi.BaseRequestBodyContentSchema{
+			Title: m.SchemaName(),
+			Type:  m.SchemaType(),
+		},
+		Reference: openapi.Reference{
+			Ref: m.SchemaName(),
+		},
+	})
+}

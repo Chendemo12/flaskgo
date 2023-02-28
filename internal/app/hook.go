@@ -88,7 +88,7 @@ func jsoniterUnmarshalErrorToValidationError(err error) *ValidationError {
 	//
 	// 	err.Error():
 	//
-	// 	main.SimpleForm.Name: ReadString: expects " or n, but found 2, error found in #10 byte of ...| "name": 23,
+	// 	main.SimpleForm.name: ReadString: expects " or n, but found 2, error found in #10 byte of ...| "name": 23,
 	//		"a|..., bigger context ...|{
 	//		"name": 23,
 	//		"age": "23",

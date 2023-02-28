@@ -41,4 +41,10 @@ type Iface interface {
 	ParseRaw(stc []byte) []*ValidationError
 	// Copy 拷贝一个新的空实例对象
 	Copy() any
+	// MetaData 获取反射后的字段元信息
+	MetaData() *ModelMetaData
+}
+
+type QueryParameter interface {
+	Fields() []*QModel
 }

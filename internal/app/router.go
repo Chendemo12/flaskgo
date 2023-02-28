@@ -74,8 +74,10 @@ func (f *Route) SetDescription(description string) *Route {
 
 // SetQueryParams 设置查询参数,此空struct的每一个字段都将作为一个单独的查询参数
 // @param  m  any  查询参数对象
-func (f *Route) SetQueryParams(m any) *Route {
-	f.QueryFields = godantic.AnyToQModel(m) // 转换为内部模型
+func (f *Route) SetQueryParams(m godantic.QueryParameter) *Route {
+	if m != nil {
+		f.QueryFields = m.Fields() // 转换为内部模型
+	}
 	return f
 }
 
@@ -129,7 +131,7 @@ func (f *Router) IncludeRouter(router *Router) *Router {
 
 func (f *Router) method(
 	method, relativePath, summary string,
-	queryModel any, requestModel, responseModel godantic.Iface,
+	queryModel godantic.QueryParameter, requestModel, responseModel godantic.Iface,
 	handler HandlerFunc,
 	additions []any,
 ) *Route {
@@ -162,16 +164,20 @@ func (f *Router) method(
 	route := &Route{
 		Method:        method,
 		RelativePath:  relativePath,
-		PathFields:    make([]*godantic.QModel, 0),      // 路径参数
-		QueryFields:   godantic.AnyToQModel(queryModel), // 查询参数
-		RequestModel:  requestModel,                     // 请求体
-		ResponseModel: responseModel,                    // 响应体
+		PathFields:    make([]*godantic.QModel, 0), // 路径参数
+		QueryFields:   make([]*godantic.QModel, 0), // 查询参数
+		RequestModel:  requestModel,                // 请求体
+		ResponseModel: responseModel,               // 响应体
 		Summary:       summary,
 		Handlers:      handlers,
 		Dependencies:  make([]HandlerFunc, 0),
 		Tags:          f.Tags,
 		Description:   method + " " + summary,
 		deprecated:    deprecated,
+	}
+
+	if queryModel != nil {
+		route.QueryFields = append(route.QueryFields, queryModel.Fields()...)
 	}
 
 	// 生成路径参数
@@ -196,7 +202,7 @@ func (f *Router) method(
 // GET http get method
 // @param  path           string          相对路径,必须以"/"开头
 // @param  summary        string          路由摘要信息
-// @param  queryModel     any             查询参数，仅支持struct类型
+// @param  queryModel     godantic.QueryParameter             查询参数，仅支持struct类型
 // @param  responseModel  godantic.Iface  响应体对象, 此model应为一个空struct实例,而非指针类型
 // @param  handler        []HandlerFunc   路由处理方法
 // @param  addition       any             附加参数，如："deprecated"用于禁用此路由
@@ -214,7 +220,6 @@ func (f *Router) GET(
 // DELETE http delete method
 // @param  path           string          相对路径,必须以"/"开头
 // @param  summary        string          路由摘要信息
-// @param  queryModel     any             查询参数，仅支持struct类型
 // @param  responseModel  godantic.Iface  响应体对象,  此model应为一个空struct实例,而非指针类型
 // @param  handler        []HandlerFunc   路由处理方法
 // @param  addition       any             附加参数

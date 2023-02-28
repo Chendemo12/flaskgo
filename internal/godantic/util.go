@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"unicode"
 )
 
 // reflectKindToOType 转换reflect.Kind为swagger类型说明
@@ -101,51 +100,4 @@ func QueryJsonName(tag reflect.StructTag, undefined string) string {
 		return strings.TrimSpace(strings.Split(v, ",")[0])
 	}
 	return undefined
-}
-
-// Deprecated: AnyToQModel 将表示查询参数的struct或map转换成查询参数模型
-// @param  object  any  查询参数模型，此类别必须为  map[string]bool  或  struct
-func AnyToQModel(object any) (m []*QModel) {
-	if object == nil {
-		return
-	}
-
-	rt := reflect.TypeOf(object)
-	switch rt.Kind() {
-
-	case reflect.Map: // 若为map类型，则key标识字段名称，value表示参数是否必须
-		if fields, ok := object.(map[string]bool); ok {
-			m = make([]*QModel, 0)
-
-			for field, require := range fields {
-				qm := &QModel{Name: field, Required: require, InPath: false}
-				if require {
-					qm.Tag = reflect.StructTag(`json:"` + field + `" binding:"required" validate:"required"`)
-				} else {
-					qm.Tag = reflect.StructTag(`json:"` + field + `"`)
-				}
-				m = append(m, qm)
-			}
-		}
-
-	case reflect.Struct:
-		// 当此model作为查询参数时，此struct的每一个字段都将作为一个查询参数
-		m = make([]*QModel, rt.NumField())
-		for i := 0; i < rt.NumField(); i++ {
-			field := rt.Field(i)
-
-			if unicode.IsLower(rune(field.Name[0])) {
-				continue
-			}
-
-			// 仅导出字段可用
-			m[i] = &QModel{
-				Name:     QueryJsonName(field.Tag, field.Name), // 以json字段为准
-				Tag:      field.Tag,
-				Required: IsFieldRequired(field.Tag),
-			}
-		}
-	}
-
-	return
 }

@@ -2,6 +2,7 @@ package openapi
 
 import (
 	"github.com/Chendemo12/flaskgo/internal/godantic"
+	"github.com/Chendemo12/functools/helper"
 )
 
 // Contact 联系方式, 显示在 info 字段内部
@@ -152,9 +153,8 @@ type Operation struct {
 	// 请求体，通过 MakeDataModelContent 构建
 	RequestBody map[ApplicationMIMEType]any `json:"requestBody" description:"请求体"`
 	// 响应文档，对于任一个路由，均包含3个响应实例：200 + 422 + 500/404， 通过函数 MakeOperationResponses 构建
-	Responses  map[int]any `json:"responses" description:"相应体"`
-	Servers    []*Server   `json:"servers" description:"服务器配置信息"`
-	Deprecated bool        `json:"deprecated" description:"是否禁用"`
+	Responses  map[int]*Response `json:"responses" description:"相应体"`
+	Deprecated bool              `json:"deprecated" description:"是否禁用"`
 }
 
 type PathItemParameterUnion interface {
@@ -213,7 +213,7 @@ type OpenApi struct {
 	Servers     map[string]string      `json:"servers" description:""`
 	Definitions []godantic.SchemaIface `json:"definitions" description:"模型文档"`
 	Routes      []*PathItem            `json:"routes" description:"路由列表,同一路由存在多个方法文档"`
-	cache       map[string]any
+	cache       []byte
 }
 
 // AddDefinition 添加一个模型文档
@@ -280,14 +280,20 @@ func (o *OpenApi) CreateDocs() map[string]any {
 
 // RecreateDocs 重建Swagger 文档
 func (o *OpenApi) RecreateDocs() *OpenApi {
-	o.cache = o.CreateDocs()
+	bytes, err := helper.DefaultJson.Marshal(o.CreateDocs())
+	if err != nil {
+		o.cache = []byte{}
+	} else {
+		o.cache = bytes
+	}
+
 	return o
 }
 
 // Schema Swagger 文档, 并非完全符合 OpenApi 文档规范
-func (o *OpenApi) Schema() map[string]any {
-	if _, ok := o.cache["components"]; !ok {
-		o.cache = o.CreateDocs()
+func (o *OpenApi) Schema() []byte {
+	if len(o.cache) < 1 {
+		o.RecreateDocs()
 	}
 
 	return o.cache

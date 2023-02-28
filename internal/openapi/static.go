@@ -13,7 +13,7 @@ const (
 	SwaggerJsUrl      = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-bundle.js"
 	RedocJsUrl        = "https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"
 	RedocFaviconUrl   = "https://fastapi.tiangolo.com/img/favicon.png"
-	OpenapiUrl        = "openapi.json"
+	JsonUrl           = "openapi.json"
 )
 
 const (

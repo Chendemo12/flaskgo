@@ -12,25 +12,25 @@ var String = &Define{Name: "String"}
 //	// ------------------------------------- int ---------------------------------------
 //
 //	Int8 = RModelField{
-//		Name:        "Int8",
+//		names:        "Int8",
 //		Tag:         `json:"int8" gte:"-128" lte:"127" description:"int8" default:"0"`,
 //		RType:        godantic.IntegerType,
 //		ReflectKind: reflect.Int8,
 //	}
 //	Int16 = RModelField{
-//		Name:        "Int16",
+//		names:        "Int16",
 //		Tag:         `json:"int16" gte:"-32768" lte:"32767" description:"int16" default:"0"`,
 //		RType:        godantic.IntegerType,
 //		ReflectKind: reflect.Int16,
 //	}
 //	Int32 = RModelField{
-//		Name:        "Int32",
+//		names:        "Int32",
 //		Tag:         `json:"int32" gte:"-2147483648" lte:"2147483647" description:"int32" default:"0"`,
 //		RType:        godantic.IntegerType,
 //		ReflectKind: reflect.Int32,
 //	}
 //	Int64 = RModelField{
-//		Name:        "Int64",
+//		names:        "Int64",
 //		Tag:         `json:"int64" gte:"-9223372036854775808" lte:"9223372036854775807" description:"int64" default:"0"`,
 //		RType:        godantic.IntegerType,
 //		ReflectKind: reflect.Int64,
@@ -39,25 +39,25 @@ var String = &Define{Name: "String"}
 //	// ------------------------------------- uint ---------------------------------------
 //
 //	Uint8 = RModelField{
-//		Name:        "Uint8",
+//		names:        "Uint8",
 //		Tag:         `json:"uint8" gte:"0" lte:"255" description:"uint8"`,
 //		RType:        godantic.IntegerType,
 //		ReflectKind: reflect.Uint8,
 //	}
 //	Uint16 = RModelField{
-//		Name:        "Uint16",
+//		names:        "Uint16",
 //		Tag:         `json:"uint16" gte:"0" lte:"65535" description:"uint16" default:"0"`,
 //		RType:        godantic.IntegerType,
 //		ReflectKind: reflect.Uint16,
 //	}
 //	Uint32 = RModelField{
-//		Name:        "Uint32",
+//		names:        "Uint32",
 //		Tag:         `json:"uint32" gte:"0" lte:"4294967295" description:"uint32" default:"0"`,
 //		RType:        godantic.IntegerType,
 //		ReflectKind: reflect.Uint32,
 //	}
 //	Uint64 = RModelField{
-//		Name:        "Uint64",
+//		names:        "Uint64",
 //		Tag:         `json:"uint64" gte:"0" lte:"18446744073709551615" description:"uint64" default:"0"`,
 //		RType:        godantic.IntegerType,
 //		ReflectKind: reflect.Uint64,
@@ -66,13 +66,13 @@ var String = &Define{Name: "String"}
 //	// ------------------------------------- Float ---------------------------------------
 //
 //	Float32 = RModelField{
-//		Name:        "Float32",
+//		names:        "Float32",
 //		Tag:         `json:"float32" description:"float32" default:"0.0"`,
 //		RType:        godantic.NumberType,
 //		ReflectKind: reflect.Float32,
 //	}
 //	Float64 = RModelField{
-//		Name:        "Float64",
+//		names:        "Float64",
 //		Tag:         `json:"float64" description:"float64" default:"0.0"`,
 //		RType:        godantic.NumberType,
 //		ReflectKind: reflect.Float64,
@@ -81,19 +81,19 @@ var String = &Define{Name: "String"}
 //	// ------------------------------------- other ---------------------------------------
 //
 //	String = RModelField{
-//		Name:        "String",
+//		names:        "String",
 //		Tag:         `json:"string" min:"0" max:"255" description:"string" default:""`,
 //		RType:        "string",
 //		ReflectKind: reflect.String,
 //	}
 //	Boolean = RModelField{
-//		Name:        godantic.BoolType,
+//		names:        godantic.BoolType,
 //		Tag:         `json:"boolean" oneof:"true false" description:"boolean" default:"false"`,
 //		RType:        godantic.BoolType,
 //		ReflectKind: reflect.Bool,
 //	}
 //	Mapping = RModelField{
-//		Name:        "mapping",
+//		names:        "mapping",
 //		Tag:         `json:"mapping"`,
 //		RType:        godantic.ObjectType,
 //		ReflectKind: reflect.Map,
