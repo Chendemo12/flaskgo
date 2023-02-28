@@ -66,6 +66,7 @@ func (f *FlaskGo) createDefines() {
 	for _, router := range f.APIRouters() {
 		for _, route := range router.Routes() {
 			if route.RequestModel != nil {
+				// 内部会处理嵌入类型
 				f.service.openApi.AddDefinition(route.RequestModel)
 			}
 			if route.ResponseModel != nil {
@@ -79,84 +80,83 @@ func (f *FlaskGo) createDefines() {
 func (f *FlaskGo) createPaths() {
 	for _, router := range f.APIRouters() {
 		for _, route := range router.Routes() {
-			ab := route.Path(router.Prefix)
-			// 存在相同路由，不同方法的路由选项
-			item := f.service.openApi.QueryPathItem(ab)
-			if item == nil {
-				item = &openapi.PathItem{
-					Path:        ab,
-					Ref:         nil, // TODO: what is the ref
-					Summary:     route.Summary,
-					Description: route.Description,
-					Get:         nil,
-					Put:         nil,
-					Post:        nil,
-					Patch:       nil,
-					Delete:      nil,
-					Head:        nil,
-					Trace:       nil,
-					Servers:     nil,
-					Parameters:  make([]*openapi.Parameter, len(route.PathFields)),
-				}
-				f.service.openApi.AddPathItem(item)
-			}
-
-			// 构造路径参数
-			for no, q := range route.PathFields {
-				item.Parameters[no].Name = q.Name
-				item.Parameters[no].In = openapi.InPath
-				item.Parameters[no].Description = q.SchemaName()
-				item.Parameters[no].Deprecated = route.deprecated
-				item.Parameters[no].Required = q.IsRequired()
-			}
-
-			// 构造查询参数
-			queryParams := make([]*openapi.Parameter, len(route.QueryFields))
-			for no, q := range route.QueryFields {
-				queryParams[no].Name = q.Name
-				queryParams[no].In = openapi.InQuery
-				queryParams[no].Description = q.SchemaName()
-				queryParams[no].Deprecated = route.deprecated
-				queryParams[no].Required = q.IsRequired()
-			}
-
-			// 构造操作符
-			operation := &openapi.Operation{
-				Summary:     route.Summary,
-				Description: route.Description,
-				Tags:        route.Tags,
-				OperationId: "", // TODO: keep
-				Parameters:  queryParams,
-				RequestBody: &openapi.RequestBody{},
-				Response:    openapi.NewResponse(route.ResponseModel.String()), // TODO: ?
-				Deprecated:  route.deprecated,
-				Servers:     nil,
-			}
-			operation.RequestBody.Deprecated = route.deprecated
-			operation.RequestBody.Description = route.RequestModel.SchemaDesc()
-			operation.RequestBody.Required = route.RequestModel.IsRequired()
-			operation.RequestBody.Content = route.RequestModel.Ref()
-
-			// 绑定到操作方法
-			switch route.Method {
-
-			case http.MethodPost:
-				item.Post = operation
-			case http.MethodPut:
-				item.Put = operation
-			case http.MethodDelete:
-				item.Delete = operation
-			case http.MethodPatch:
-				item.Patch = operation
-			case http.MethodHead:
-				item.Head = operation
-			case http.MethodTrace:
-				item.Trace = operation
-
-			default:
-				item.Get = operation
-			}
+			routeToPathItem(router, route, f.service.openApi)
 		}
+	}
+}
+
+func routeToPathItem(router *Router, route *Route, api *openapi.OpenApi) {
+	ab := route.Path(router.Prefix)
+	// 存在相同路径，不同方法的路由选项
+	item := api.QueryPathItem(ab)
+	if item == nil {
+		item = &openapi.PathItem{
+			Path:   ab,
+			Get:    nil,
+			Put:    nil,
+			Post:   nil,
+			Patch:  nil,
+			Delete: nil,
+			Head:   nil,
+			Trace:  nil,
+		}
+		api.AddPathItem(item)
+	}
+
+	// 构造路径参数
+	pathParams := make([]*openapi.Parameter, len(route.PathFields))
+	for no, q := range route.PathFields {
+		pathParams[no].Name = q.Name
+		pathParams[no].In = openapi.InPath
+		pathParams[no].Description = q.SchemaName()
+		pathParams[no].Deprecated = route.deprecated
+		pathParams[no].Required = q.IsRequired()
+	}
+
+	// 构造查询参数
+	queryParams := make([]*openapi.Parameter, len(route.QueryFields))
+	for no, q := range route.QueryFields {
+		queryParams[no].Name = q.Name
+		queryParams[no].In = openapi.InQuery
+		queryParams[no].Description = q.SchemaName()
+		queryParams[no].Deprecated = route.deprecated
+		queryParams[no].Required = q.IsRequired()
+	}
+
+	// 构造操作符
+	operation := &openapi.Operation{
+		Summary:     route.Summary,
+		Description: route.Description,
+		Tags:        route.Tags,
+		Parameters:  append(pathParams, queryParams...),
+		RequestBody: openapi.MakeDataModelContent(openapi.MIMEApplicationJSON, ObjectRequestBodyContentSchema),
+		Response:    openapi.NewResponse(route.ResponseModel.String()), // TODO: ?
+		Deprecated:  route.deprecated,
+		Servers:     nil,
+	}
+	operation.RequestBody.Deprecated = route.deprecated
+	operation.RequestBody.Description = route.RequestModel.SchemaDesc()
+	operation.RequestBody.Required = route.RequestModel.IsRequired()
+	operation.RequestBody.Content = route.RequestModel.Ref()
+
+	// 绑定到操作方法
+	switch route.Method {
+
+	case http.MethodPost:
+		item.Post = operation
+	case http.MethodPut:
+		item.Put = operation
+	case http.MethodDelete:
+		item.Delete = operation
+	case http.MethodPatch:
+		item.Patch = operation
+	case http.MethodHead:
+		item.Head = operation
+	case http.MethodTrace:
+		item.Trace = operation
+
+	default:
+		item.Get = operation
 	}
 }
 

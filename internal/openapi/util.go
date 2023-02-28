@@ -2,8 +2,74 @@ package openapi
 
 import (
 	"github.com/Chendemo12/flaskgo/internal/constant"
+	"github.com/Chendemo12/flaskgo/internal/godantic"
+	"net/http"
 	"strings"
 )
+
+// MakeDataModelContent 构建请求体文档内容
+func MakeDataModelContent(mimeType ApplicationMIMEType, schema RequestBodyContentSchema) map[ApplicationMIMEType]any {
+	m := make(map[ApplicationMIMEType]any)
+	m[mimeType] = map[string]any{
+		"schema": schema.Schema(),
+	}
+	return m
+}
+
+func MakeOperationResponses(schema RequestBodyContentSchema) map[int]*Response {
+	m := make(map[int]*Response, 0)
+
+	// 200 接口出注册的返回值
+	m[http.StatusOK] = &Response{
+		PathDataModel: PathDataModel{
+			Content: MakeDataModelContent(MIMEApplicationJSON, schema),
+		},
+		Description: http.StatusText(http.StatusOK),
+	}
+
+	// 422 所有接口默认携带的请求体校验错误返回值
+	m[http.StatusUnprocessableEntity] = &Response{
+		PathDataModel: PathDataModel{
+			Content: MakeDataModelContent(MIMEApplicationJSON, ObjectRequestBodyContentSchema{
+				BaseRequestBodyContentSchema: BaseRequestBodyContentSchema{
+					Title: HttpValidationErrorName,
+					Type:  godantic.ObjectType,
+				},
+				Reference: Reference{
+					Ref: ModelRefPrefix + HttpValidationErrorName,
+				},
+			}),
+		},
+		Description: http.StatusText(http.StatusUnprocessableEntity),
+	}
+
+	return m
+}
+
+func NewOpenApi(title, version, description string) *OpenApi {
+	return &OpenApi{
+		Openapi: ApiVersion,
+		Info: &Info{
+			Title:          title,
+			Version:        version,
+			Description:    description,
+			TermsOfService: "",
+			Contact: Contact{
+				Name:  "FlaskGo",
+				Url:   "github.com/Chendemo12/flaskgo",
+				Email: "chendemo12@gmail.com",
+			},
+			License: License{
+				Name: "FlaskGo",
+				Url:  "github.com/Chendemo12/flaskgo",
+			},
+		},
+		Tags:        make([]Tag, 0),
+		Servers:     map[string]string{},
+		Definitions: []godantic.SchemaIface{},
+		Routes:      make([]*PathItem, 0),
+	}
+}
 
 // import (
 //

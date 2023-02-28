@@ -7,9 +7,9 @@ import (
 	"unicode"
 )
 
-// reflectKindToName 转换reflect.Kind为swagger类型说明
+// reflectKindToOType 转换reflect.Kind为swagger类型说明
 // @param  ReflectKind  reflect.Kind  反射类型
-func reflectKindToName(kind reflect.Kind) (name string) {
+func reflectKindToOType(kind reflect.Kind) (name OpenApiDataType) {
 	switch kind {
 
 	case reflect.Array, reflect.Slice, reflect.Chan:
@@ -45,15 +45,16 @@ func IsFieldRequired(tag reflect.StructTag) bool {
 	return false
 }
 
-func GetDefaultV(tag reflect.StructTag, swagType string) (v any) {
+// GetDefaultV 从Tag中提取字段默认值
+func GetDefaultV(tag reflect.StructTag, otype OpenApiDataType) (v any) {
 	defaultV := QueryFieldTag(tag, "default", "")
 
 	if defaultV == "" {
 		v = nil
 	} else { // 存在默认值
-		switch swagType {
+		switch otype {
 
-		case "string":
+		case StringType:
 			v = defaultV
 		case IntegerType:
 			v, _ = strconv.Atoi(defaultV)
@@ -73,7 +74,7 @@ func IsArray(object any) bool {
 	if object == nil {
 		return false
 	}
-	return reflectKindToName(reflect.TypeOf(object).Kind()) == ArrayType
+	return reflectKindToOType(reflect.TypeOf(object).Kind()) == ArrayType
 }
 
 // QueryFieldTag 查找struct字段的Tag
@@ -91,7 +92,7 @@ func QueryFieldTag(tag reflect.StructTag, label string, undefined string) string
 	return undefined
 }
 
-// QueryJsonName 查询字段名
+// QueryJsonName 查询字段定义的json名称
 func QueryJsonName(tag reflect.StructTag, undefined string) string {
 	if tag == "" {
 		return undefined
@@ -102,7 +103,7 @@ func QueryJsonName(tag reflect.StructTag, undefined string) string {
 	return undefined
 }
 
-// AnyToQModel 将表示查询参数的struct或map转换成查询参数模型
+// Deprecated: AnyToQModel 将表示查询参数的struct或map转换成查询参数模型
 // @param  object  any  查询参数模型，此类别必须为  map[string]bool  或  struct
 func AnyToQModel(object any) (m []*QModel) {
 	if object == nil {

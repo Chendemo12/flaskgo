@@ -18,6 +18,7 @@ type dict map[string]any
 type Field struct {
 	Name      string            `json:"name" description:"字段名称"`
 	Index     int               `json:"index" description:"当前字段所处的序号"`
+	Default   any               `json:"default" description:"默认值"` // 暂时仅限 swagger 使用，后期也应在字段校验时使用
 	Exported  bool              `json:"exported" description:"是否是导出字段"`
 	Anonymous bool              `json:"anonymous" description:"是否是嵌入字段"`
 	Tag       reflect.StructTag `json:"tag" description:"字段标签"`
@@ -62,7 +63,7 @@ type Field struct {
 //	}
 func (f *Field) Schema() (m map[string]any) {
 	// 最基础的属性，必须
-	tp := reflectKindToName(f.RType.Kind())
+	tp := reflectKindToOType(f.RType.Kind())
 	m = dict{
 		"title":       f.Name,
 		"type":        tp,
@@ -71,6 +72,7 @@ func (f *Field) Schema() (m map[string]any) {
 	}
 	// 生成默认值
 	if v := GetDefaultV(f.Tag, tp); v != nil {
+		f.Default = v
 		m["default"] = v
 	}
 	// 生成字段的枚举值
@@ -119,7 +121,7 @@ func (f *Field) Schema() (m map[string]any) {
 				m["items"] = map[string]string{"type": f.ItemRef}
 			}
 		} else { // 缺省为string
-			m["items"] = map[string]string{"type": StringType}
+			m["items"] = map[string]OpenApiDataType{"type": StringType}
 		}
 		// 限制数组的长度
 		if lt := QueryFieldTag(f.Tag, "max", ""); lt != "" {
@@ -147,7 +149,7 @@ func (f *Field) SchemaName(exclude ...bool) string { return f.Name }
 func (f *Field) SchemaDesc() string { return QueryFieldTag(f.Tag, "description", f.Name) }
 
 // SchemaType 模型类型
-func (f *Field) SchemaType() string { return reflectKindToName(f.RType.Kind()) }
+func (f *Field) SchemaType() OpenApiDataType { return reflectKindToOType(f.RType.Kind()) }
 
 // SchemaJson swagger文档字符串格式
 func (f *Field) SchemaJson() string {
@@ -163,7 +165,7 @@ func (f *Field) SchemaJson() string {
 func (f *Field) IsRequired() bool { return f.Exported && IsFieldRequired(f.Tag) }
 
 // IsArray 字段是否是数组类型
-func (f *Field) IsArray() bool { return reflectKindToName(f.RType.Kind()) == ArrayType }
+func (f *Field) IsArray() bool { return reflectKindToOType(f.RType.Kind()) == ArrayType }
 
 // InnerSchema 内部字段模型文档, 全名:文档
 func (f *Field) InnerSchema() (m map[string]map[string]any) {

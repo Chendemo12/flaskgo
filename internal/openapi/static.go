@@ -2,7 +2,6 @@ package openapi
 
 import (
 	"github.com/Chendemo12/flaskgo/internal/godantic"
-	"net/http"
 )
 
 const ApiVersion = "3.0.2"
@@ -51,10 +50,16 @@ const (
 
 type dict map[string]any
 
+const (
+	ValidationErrorName       string = "ValidationError"
+	HttpValidationErrorName   string = "HTTPValidationError"
+	CustomValidationErrorName string = "CustomValidationError"
+)
+
 // 422 表单验证错误模型
 var validationErrorDefinition = dict{
-	"title": "ValidationError",
-	"type":  "object",
+	"title": ValidationErrorName,
+	"type":  godantic.ObjectType,
 	"properties": dict{
 		"loc": dict{
 			"title": "Location",
@@ -69,8 +74,8 @@ var validationErrorDefinition = dict{
 
 // 请求体相应体错误消息
 var validationErrorResponseDefinition = dict{
-	"title":    "HTTPValidationError",
-	"type":     "object",
+	"title":    HttpValidationErrorName,
+	"type":     godantic.ObjectType,
 	"required": []string{"detail"},
 	"properties": dict{
 		"detail": dict{
@@ -83,9 +88,9 @@ var validationErrorResponseDefinition = dict{
 
 // 自定义错误消息
 var customErrorDefinition = dict{
-	"title":    "CustomValidationError",
+	"title":    CustomValidationErrorName,
 	"required": []string{"error_code"},
-	"type":     "object",
+	"type":     godantic.ObjectType,
 	"properties": dict{
 		"error_code": dict{
 			"title":       "ErrorCode",
@@ -102,14 +107,4 @@ var customErrorDefinition = dict{
 		},
 		"description": "CustomValidationError",
 	},
-}
-
-func NewResponse(name string) []*Response {
-	r := make([]*Response, 3)
-	// TODO: 关联模型
-	r[0].Description = http.StatusText(http.StatusOK)
-	r[1].Description = http.StatusText(http.StatusUnprocessableEntity)
-	r[2].Description = http.StatusText(http.StatusNotFound) // TODO: 500? 404?
-
-	return r
 }
