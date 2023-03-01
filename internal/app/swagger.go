@@ -26,7 +26,7 @@ func (f *FlaskGo) createOpenApiDoc() {
 
 	f.service.openApi = openapi.NewOpenApi(f.title, f.version, f.Description())
 	f.createDefines()
-	f.createPaths()
+	//f.createPaths()
 	f.createSwaggerRoutes()
 }
 
@@ -114,7 +114,7 @@ func routeToPathItem(router *Router, route *Route, api *openapi.OpenApi) {
 				Required:    q.IsRequired(),
 				Deprecated:  route.deprecated,
 				Schema: openapi.Reference{
-					Ref: openapi.ModelRefPrefix + q.SchemaName(),
+					Name: q.SchemaName(),
 				},
 			},
 			Name: q.Name,
@@ -135,7 +135,7 @@ func routeToPathItem(router *Router, route *Route, api *openapi.OpenApi) {
 				Required:    q.IsRequired(),
 				Deprecated:  route.deprecated,
 				Schema: openapi.Reference{
-					Ref: openapi.ModelRefPrefix + q.SchemaName(),
+					Name: q.SchemaName(),
 				},
 			},
 			Name: q.Name,
@@ -150,8 +150,8 @@ func routeToPathItem(router *Router, route *Route, api *openapi.OpenApi) {
 		Description: route.Description,
 		Tags:        route.Tags,
 		Parameters:  append(pathParams, queryParams...),
-		RequestBody: routeRequestModelToOpenapiResponse(route.RequestModel),
-		Responses:   routeResponseModelToOpenapiResponse(route.ResponseModel),
+		RequestBody: openapi.MakeOperationRequestBody(route.RequestModel),
+		Responses:   openapi.MakeOperationResponses(route.ResponseModel),
 		Deprecated:  route.deprecated,
 	}
 
@@ -174,56 +174,4 @@ func routeToPathItem(router *Router, route *Route, api *openapi.OpenApi) {
 	default:
 		item.Get = operation
 	}
-}
-
-// 将路由中的 RequestBody 转换成 openapi 的返回体
-func routeRequestModelToOpenapiResponse(m godantic.Iface) map[openapi.ApplicationMIMEType]any {
-	switch m.SchemaType() {
-	case godantic.ArrayType:
-		return openapi.MakeDataModelContent(
-			openapi.MIMEApplicationJSON,
-			openapi.ArrayRequestBodyContentSchema{
-				BaseRequestBodyContentSchema: openapi.BaseRequestBodyContentSchema{
-					Title: m.SchemaName(),
-				},
-				Items: openapi.Reference{
-					Ref: openapi.ModelRefPrefix + m.SchemaName(),
-				},
-			},
-		)
-	case godantic.ObjectType:
-		return openapi.MakeDataModelContent(
-			openapi.MIMEApplicationJSON,
-			openapi.ObjectRequestBodyContentSchema{
-				BaseRequestBodyContentSchema: openapi.BaseRequestBodyContentSchema{
-					Title: m.SchemaName(),
-				},
-				Reference: openapi.Reference{
-					Ref: openapi.ModelRefPrefix + m.SchemaName(),
-				},
-			},
-		)
-
-	default:
-		return openapi.MakeDataModelContent(
-			openapi.MIMEApplicationJSON,
-			openapi.BaseRequestBodyContentSchema{
-				Title: m.SchemaName(),
-				Type:  m.SchemaType(),
-			},
-		)
-	}
-}
-
-// 将路由中的 ResponseBody 转换成 openapi 的返回体
-func routeResponseModelToOpenapiResponse(m godantic.Iface) map[int]*openapi.Response {
-	return openapi.MakeOperationResponses(openapi.ObjectRequestBodyContentSchema{
-		BaseRequestBodyContentSchema: openapi.BaseRequestBodyContentSchema{
-			Title: m.SchemaName(),
-			Type:  m.SchemaType(),
-		},
-		Reference: openapi.Reference{
-			Ref: m.SchemaName(),
-		},
-	})
 }

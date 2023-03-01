@@ -1,54 +1,106 @@
 package openapi
 
 import (
-	"github.com/Chendemo12/flaskgo/internal/constant"
 	"github.com/Chendemo12/flaskgo/internal/godantic"
 	"net/http"
 	"strings"
 )
 
-// MakeDataModelContent 构建请求体文档内容
-func MakeDataModelContent(mimeType ApplicationMIMEType, schema RequestBodyContentSchema) map[ApplicationMIMEType]any {
-	m := make(map[ApplicationMIMEType]any)
-	m[mimeType] = map[string]any{
-		"schema": schema.Schema(),
+// MakeOperationRequestBody 将路由中的 godantic.SchemaIface 转换成 openapi 的请求体 RequestBody
+func MakeOperationRequestBody(model godantic.SchemaIface) *RequestBody {
+	r := &RequestBody{
+		Required: model.IsRequired(),
+		Content: PathModelContent{
+			MIMEType: MIMEApplicationJSON,
+			Schema:   nil,
+		},
 	}
-	return m
+
+	bcs := BaseModelContentSchema{Title: model.SchemaName(), Type: model.SchemaType()}
+	switch model.SchemaType() {
+	case godantic.ArrayType:
+		r.Content.Schema = ArrayModelContentSchema{
+			BaseModelContentSchema: bcs,
+			Items: Reference{
+				Name: model.SchemaName(),
+			},
+		}
+
+	case godantic.ObjectType:
+
+		r.Content.Schema = ObjectModelContentSchema{
+			BaseModelContentSchema: bcs,
+			Reference: Reference{
+				Name: model.SchemaName(),
+			},
+		}
+
+	default:
+		r.Content.Schema = bcs
+	}
+
+	return r
 }
 
-func MakeOperationResponses(schema RequestBodyContentSchema) map[int]*Response {
-	m := make(map[int]*Response, 0)
+// MakeOperationResponses 将路由中的 godantic.SchemaIface 转换成 openapi 的返回体 []*Response
+func MakeOperationResponses(model godantic.SchemaIface) []*Response {
+	m := make([]*Response, 2) // 200 + 422
 
 	// 200 接口出注册的返回值
-	m[http.StatusOK] = &Response{
-		PathDataModel: PathDataModel{
-			Content: MakeDataModelContent(MIMEApplicationJSON, schema),
-		},
+	m[0] = &Response{
+		StatusCode:  http.StatusOK,
 		Description: http.StatusText(http.StatusOK),
+		Content: PathModelContent{
+			MIMEType: MIMEApplicationJSON,
+			Schema:   nil,
+		},
 	}
 
 	// 422 所有接口默认携带的请求体校验错误返回值
-	m[http.StatusUnprocessableEntity] = &Response{
-		PathDataModel: PathDataModel{
-			Content: MakeDataModelContent(MIMEApplicationJSON, ObjectRequestBodyContentSchema{
-				BaseRequestBodyContentSchema: BaseRequestBodyContentSchema{
+	m[1] = &Response{
+		StatusCode:  http.StatusUnprocessableEntity,
+		Description: http.StatusText(http.StatusUnprocessableEntity),
+		Content: PathModelContent{
+			MIMEType: MIMEApplicationJSON,
+			Schema: ObjectModelContentSchema{
+				BaseModelContentSchema: BaseModelContentSchema{
 					Title: HttpValidationErrorName,
 					Type:  godantic.ObjectType,
 				},
 				Reference: Reference{
-					Ref: ModelRefPrefix + HttpValidationErrorName,
+					Name: HttpValidationErrorName,
 				},
-			}),
+			},
 		},
-		Description: http.StatusText(http.StatusUnprocessableEntity),
+	}
+
+	bcs := BaseModelContentSchema{Title: model.SchemaName(), Type: model.SchemaType()}
+	switch model.SchemaType() {
+	case godantic.ObjectType:
+		m[0].Content.Schema = ObjectModelContentSchema{
+			BaseModelContentSchema: bcs,
+			Reference: Reference{
+				Name: model.SchemaName(),
+			},
+		}
+	case godantic.ArrayType:
+		m[0].Content.Schema = ArrayModelContentSchema{
+			BaseModelContentSchema: bcs,
+			Items: Reference{
+				Name: model.SchemaName(),
+			},
+		}
+	default:
+		m[0].Content.Schema = bcs
 	}
 
 	return m
 }
 
+// NewOpenApi 构造一个新的 OpenApi 文档
 func NewOpenApi(title, version, description string) *OpenApi {
 	return &OpenApi{
-		Openapi: ApiVersion,
+		Version: ApiVersion,
 		Info: &Info{
 			Title:          title,
 			Version:        version,
@@ -64,10 +116,9 @@ func NewOpenApi(title, version, description string) *OpenApi {
 				Url:  "github.com/Chendemo12/flaskgo",
 			},
 		},
-		Tags:        make([]Tag, 0),
-		Servers:     map[string]string{},
-		Definitions: []godantic.SchemaIface{},
-		Routes:      make([]*PathItem, 0),
+		Components:  &Components{Scheme: make([]*ComponentScheme, 0)},
+		Paths:       &Paths{Paths: make([]*PathItem, 0)},
+		initialized: false,
 		cache:       make([]byte, 0),
 	}
 }
@@ -85,12 +136,12 @@ func NewOpenApi(title, version, description string) *OpenApi {
 //		Input: "/api/rcst/no"
 //		Output: "/api/rcst/no"
 func FastApiRoutePath(path string) string {
-	paths := strings.Split(path, constant.PathSeparator) // 路径字符
+	paths := strings.Split(path, PathSeparator) // 路径字符
 	// 查找路径中的参数
 	for i := 0; i < len(paths); i++ {
-		if strings.HasPrefix(paths[i], constant.PathParamPrefix) {
+		if strings.HasPrefix(paths[i], PathParamPrefix) {
 			// 识别到路径参数
-			if strings.HasSuffix(paths[i], constant.OptionalPathParamSuffix) {
+			if strings.HasSuffix(paths[i], OptionalPathParamSuffix) {
 				// 可选路径参数
 				paths[i] = "{" + paths[i][1:len(paths[i])-1] + "}"
 			} else {
@@ -99,5 +150,5 @@ func FastApiRoutePath(path string) string {
 		}
 	}
 
-	return strings.Join(paths, constant.PathSeparator)
+	return strings.Join(paths, PathSeparator)
 }

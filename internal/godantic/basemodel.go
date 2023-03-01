@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
-	"unicode"
 )
 
 type dict map[string]any
@@ -16,7 +14,7 @@ type dict map[string]any
 // 对于 BaseModel 其字段仍然可能会 BaseModel,
 // 但此类型不再递归记录,仅记录一个关联模型为基本
 type Field struct {
-	Name      string            `json:"names" description:"字段名称"`
+	Title     string            `json:"title" description:"字段名称"`
 	Index     int               `json:"index" description:"当前字段所处的序号"`
 	Default   any               `json:"default" description:"默认值"` // 暂时仅限 swagger 使用，后期也应在字段校验时使用
 	Exported  bool              `json:"exported" description:"是否是导出字段"`
@@ -65,7 +63,7 @@ func (f *Field) Schema() (m map[string]any) {
 	// 最基础的属性，必须
 	tp := reflectKindToOType(f.RType.Kind())
 	m = dict{
-		"title":       f.Name,
+		"title":       f.Title,
 		"type":        tp,
 		"required":    f.IsRequired(),
 		"description": f.SchemaDesc(),
@@ -143,10 +141,10 @@ func (f *Field) Schema() (m map[string]any) {
 }
 
 // SchemaName swagger文档字段名
-func (f *Field) SchemaName(exclude ...bool) string { return f.Name }
+func (f *Field) SchemaName(exclude ...bool) string { return QueryJsonName(f.Tag, f.Title) }
 
 // SchemaDesc 字段注释说明
-func (f *Field) SchemaDesc() string { return QueryFieldTag(f.Tag, "description", f.Name) }
+func (f *Field) SchemaDesc() string { return QueryFieldTag(f.Tag, "description", f.Title) }
 
 // SchemaType 模型类型
 func (f *Field) SchemaType() OpenApiDataType { return reflectKindToOType(f.RType.Kind()) }
@@ -173,151 +171,12 @@ func (f *Field) InnerSchema() (m map[string]map[string]any) {
 	return
 }
 
-type ModelMetaData struct {
-	fields      []*Field   `description:"结构体字段"`
-	names       []string   `description:"结构体名称,包名+结构体名称"`
-	innerFields []*Field   `description:"内部字段"`
-	once        *sync.Once `description:"由于 SchemaName 方法必定最先被调用,因此在此内部实例"`
-}
-
-// Names 结构体名称, 包名, 结构体名称
-// @return []string 包名,结构体名称
-func (m ModelMetaData) Names() []string { return m.names }
-
-// Fields 结构体字段
-func (m ModelMetaData) Fields() []*Field { return m.fields }
-
-// InnerFields 内部字段
-func (m ModelMetaData) InnerFields() []*Field { return m.innerFields }
-
 // BaseModel 基本数据模型, 对于上层的 app.Route 其请求和相应体都应为继承此结构体的结构体
 // 在 OpenApi 文档模型中,此模型的类型始终为 "object";
 // 此类型无需再次转换, 直接将其 Schema 文档添加到 openapi.OpenApi 的模型Definitions定义中,
 // 并在路由中通过引用关联模型
 type BaseModel struct {
-	_meta *ModelMetaData
-}
-
-func (b *BaseModel) init() {
-	at := reflect.TypeOf(b)
-	v := reflect.Indirect(reflect.ValueOf(b))
-
-	// 获取包名
-	b._meta.names = []string{at.Elem().Name(), at.Elem().String()}
-	b._meta.innerFields = make([]*Field, 0)
-
-	// 获取字段信息
-	for i := 0; i < v.NumField(); i++ {
-		field := at.Field(i)
-		if strings.HasPrefix(field.Name, "_") {
-			continue
-		}
-		// TODO: 处理嵌入式结构体
-		b._meta.fields = append(b._meta.fields, &Field{
-			Index:     i,
-			Name:      field.Name,
-			Tag:       field.Tag,
-			RType:     field.Type,
-			Exported:  unicode.IsUpper(rune(field.Name[0])),
-			Anonymous: field.Anonymous,
-		})
-	}
-}
-
-// String 将结构体序列化为字符串
-func (b *BaseModel) String() string {
-	if bytes, err := helper.DefaultJsonMarshal(b); err != nil {
-		return ""
-	} else {
-		return string(bytes)
-	}
-}
-
-// Map 将结构体转换为字典视图
-func (b *BaseModel) Map() (m map[string]any) {
-	m = structfuncs.GetFieldsValue(b)
-	return
-}
-
-// Dict 将结构体转换为字典视图，并允许过滤一些字段或添加一些键值对到字典中
-func (b *BaseModel) Dict(exclude []string, include map[string]any) (m map[string]any) {
-
-	excludeMap := make(map[string]string, len(exclude))
-	for i := 0; i < len(exclude); i++ {
-		excludeMap[exclude[i]] = exclude[i]
-	}
-
-	// 实时反射取值
-	v := reflect.Indirect(reflect.ValueOf(b))
-
-	for i := 0; i < len(b._meta.fields); i++ {
-		if !b._meta.fields[i].Exported || b._meta.fields[i].Anonymous { // 非导出字段
-			continue
-		}
-
-		if _, ok := excludeMap[b._meta.fields[i].Name]; ok { // 此字段被排除
-			continue
-		}
-
-		switch b._meta.fields[i].RType.Kind() { // 获取字段定义的类型
-
-		case reflect.Array, reflect.Slice:
-			m[b._meta.fields[i].Name] = v.Field(b._meta.fields[i].Index).Bytes()
-
-		case reflect.Uint8:
-			m[b._meta.fields[i].Name] = byte(v.Field(b._meta.fields[i].Index).Uint())
-		case reflect.Uint16:
-			m[b._meta.fields[i].Name] = uint16(v.Field(b._meta.fields[i].Index).Uint())
-		case reflect.Uint32:
-			m[b._meta.fields[i].Name] = uint32(v.Field(b._meta.fields[i].Index).Uint())
-		case reflect.Uint64, reflect.Uint:
-			m[b._meta.fields[i].Name] = v.Field(b._meta.fields[i].Index).Uint()
-
-		case reflect.Int8:
-			m[b._meta.fields[i].Name] = int8(v.Field(b._meta.fields[i].Index).Int())
-		case reflect.Int16:
-			m[b._meta.fields[i].Name] = int16(v.Field(b._meta.fields[i].Index).Int())
-		case reflect.Int32:
-			m[b._meta.fields[i].Name] = int32(v.Field(b._meta.fields[i].Index).Int())
-		case reflect.Int64, reflect.Int:
-			m[b._meta.fields[i].Name] = v.Field(b._meta.fields[i].Index).Int()
-
-		case reflect.Float32:
-			m[b._meta.fields[i].Name] = float32(v.Field(b._meta.fields[i].Index).Float())
-		case reflect.Float64:
-			m[b._meta.fields[i].Name] = v.Field(b._meta.fields[i].Index).Float()
-
-		case reflect.Struct, reflect.Interface, reflect.Map:
-			m[b._meta.fields[i].Name] = v.Field(b._meta.fields[i].Index).Interface()
-
-		case reflect.String:
-			m[b._meta.fields[i].Name] = v.Field(b._meta.fields[i].Index).String()
-
-		case reflect.Pointer:
-			m[b._meta.fields[i].Name] = v.Field(b._meta.fields[i].Index).Pointer()
-		case reflect.Bool:
-			m[b._meta.fields[i].Name] = v.Field(b._meta.fields[i].Index).Bool()
-		}
-
-	}
-
-	if include != nil {
-		for k := range include {
-			m[k] = include[k]
-		}
-	}
-
-	return
-}
-
-// Exclude 将结构体转换为字典视图，并过滤一些字段
-func (b *BaseModel) Exclude(exclude ...string) (m map[string]any) {
-	return b.Dict(exclude, nil)
-}
-
-// Include 将结构体转换为字典视图，并允许添加一些键值对到字典中
-func (b *BaseModel) Include(include map[string]any) (m map[string]any) {
-	return b.Dict([]string{}, include)
+	_pkg string
 }
 
 // Schema 输出为OpenAPI文档模型,字典格式
@@ -348,17 +207,18 @@ func (b *BaseModel) Include(include map[string]any) (m map[string]any) {
 func (b *BaseModel) Schema() (m map[string]any) {
 	m = dict{"title": b.SchemaName(), "type": b.SchemaType(), "description": b.SchemaDesc()}
 
-	required := make([]string, 0, len(b._meta.fields))
-	properties := make(map[string]any, len(b._meta.fields))
+	meta := GetMetaData(b._pkg)
+	required := make([]string, 0, len(meta.fields))
+	properties := make(map[string]any, len(meta.fields))
 
-	for i := 0; i < len(b._meta.fields); i++ {
-		if !b._meta.fields[i].Exported || b._meta.fields[i].Anonymous { // 非导出字段
+	for i := 0; i < len(meta.fields); i++ {
+		if !meta.fields[i].Exported || meta.fields[i].Anonymous { // 非导出字段
 			continue
 		}
 
-		properties[b._meta.fields[i].SchemaName()] = b._meta.fields[i].Schema()
-		if b._meta.fields[i].IsRequired() {
-			required = append(required, b._meta.fields[i].SchemaName())
+		properties[meta.fields[i].SchemaName()] = meta.fields[i].Schema()
+		if meta.fields[i].IsRequired() {
+			required = append(required, meta.fields[i].SchemaName())
 		}
 	}
 
@@ -367,28 +227,14 @@ func (b *BaseModel) Schema() (m map[string]any) {
 	return
 }
 
-// SchemaRef 模型引用文档
-//
-//	{
-//		"$ref": "#/components/schemas/HTTPValidationError"
-//	}
-func (b *BaseModel) SchemaRef() (m map[string]any) {
-	m[RefName] = RefPrefix + b.SchemaName()
-	return
-}
-
 // SchemaName 获取结构体的名称,默认包含包名
 // @param  exclude  []bool  是否排除包名LL
 func (b *BaseModel) SchemaName(exclude ...bool) string {
-	if b._meta.once == nil {
-		b._meta.once = &sync.Once{}
-	}
-	b._meta.once.Do(b.init)
-
+	meta := GetMetaData(b._pkg)
 	if len(exclude) > 0 { // 排除包名
-		return b._meta.names[0]
+		return meta.names[0]
 	} else {
-		return b._meta.names[1]
+		return meta.names[1]
 	}
 }
 
@@ -410,14 +256,112 @@ func (b *BaseModel) SchemaJson() string {
 
 // InnerSchema 内部字段模型文档
 func (b *BaseModel) InnerSchema() (m map[string]map[string]any) {
-	for i := 0; i < len(b._meta.innerFields); i++ {
-		m[b._meta.innerFields[i].SchemaName()] = b._meta.innerFields[i].Schema()
+	meta := GetMetaData(b._pkg)
+	for i := 0; i < len(meta.innerFields); i++ {
+		m[meta.innerFields[i].SchemaName()] = meta.innerFields[i].Schema()
 	}
 
 	return
 }
 
 func (b *BaseModel) IsRequired() bool { return true }
+
+// String 将结构体序列化为字符串
+func (b *BaseModel) String() string {
+	if bytes, err := helper.DefaultJsonMarshal(b); err != nil {
+		return ""
+	} else {
+		return string(bytes)
+	}
+}
+
+// Map 将结构体转换为字典视图
+func (b *BaseModel) Map() (m map[string]any) {
+	m = structfuncs.GetFieldsValue(b)
+	return
+}
+
+// Dict 将结构体转换为字典视图，并允许过滤一些字段或添加一些键值对到字典中
+func (b *BaseModel) Dict(exclude []string, include map[string]any) (m map[string]any) {
+
+	excludeMap := make(map[string]string, len(exclude))
+	for i := 0; i < len(exclude); i++ {
+		excludeMap[exclude[i]] = exclude[i]
+	}
+
+	// 实时反射取值
+	v := reflect.Indirect(reflect.ValueOf(b))
+	meta := GetMetaData(b._pkg)
+
+	for i := 0; i < len(meta.Fields()); i++ {
+		if !meta.fields[i].Exported || meta.fields[i].Anonymous { // 非导出字段
+			continue
+		}
+
+		if _, ok := excludeMap[meta.fields[i].Title]; ok { // 此字段被排除
+			continue
+		}
+
+		switch meta.fields[i].RType.Kind() { // 获取字段定义的类型
+
+		case reflect.Array, reflect.Slice:
+			m[meta.fields[i].Title] = v.Field(meta.fields[i].Index).Bytes()
+
+		case reflect.Uint8:
+			m[meta.fields[i].Title] = byte(v.Field(meta.fields[i].Index).Uint())
+		case reflect.Uint16:
+			m[meta.fields[i].Title] = uint16(v.Field(meta.fields[i].Index).Uint())
+		case reflect.Uint32:
+			m[meta.fields[i].Title] = uint32(v.Field(meta.fields[i].Index).Uint())
+		case reflect.Uint64, reflect.Uint:
+			m[meta.fields[i].Title] = v.Field(meta.fields[i].Index).Uint()
+
+		case reflect.Int8:
+			m[meta.fields[i].Title] = int8(v.Field(meta.fields[i].Index).Int())
+		case reflect.Int16:
+			m[meta.fields[i].Title] = int16(v.Field(meta.fields[i].Index).Int())
+		case reflect.Int32:
+			m[meta.fields[i].Title] = int32(v.Field(meta.fields[i].Index).Int())
+		case reflect.Int64, reflect.Int:
+			m[meta.fields[i].Title] = v.Field(meta.fields[i].Index).Int()
+
+		case reflect.Float32:
+			m[meta.fields[i].Title] = float32(v.Field(meta.fields[i].Index).Float())
+		case reflect.Float64:
+			m[meta.fields[i].Title] = v.Field(meta.fields[i].Index).Float()
+
+		case reflect.Struct, reflect.Interface, reflect.Map:
+			m[meta.fields[i].Title] = v.Field(meta.fields[i].Index).Interface()
+
+		case reflect.String:
+			m[meta.fields[i].Title] = v.Field(meta.fields[i].Index).String()
+
+		case reflect.Pointer:
+			m[meta.fields[i].Title] = v.Field(meta.fields[i].Index).Pointer()
+		case reflect.Bool:
+			m[meta.fields[i].Title] = v.Field(meta.fields[i].Index).Bool()
+		}
+
+	}
+
+	if include != nil {
+		for k := range include {
+			m[k] = include[k]
+		}
+	}
+
+	return
+}
+
+// Exclude 将结构体转换为字典视图，并过滤一些字段
+func (b *BaseModel) Exclude(exclude ...string) (m map[string]any) {
+	return b.Dict(exclude, nil)
+}
+
+// Include 将结构体转换为字典视图，并允许添加一些键值对到字典中
+func (b *BaseModel) Include(include map[string]any) (m map[string]any) {
+	return b.Dict([]string{}, include)
+}
 
 // Validate 检验实例是否符合tag要求
 func (b *BaseModel) Validate(stc any) []*ValidationError {
@@ -438,10 +382,10 @@ func (b *BaseModel) Copy() any {
 }
 
 // MetaData 获取反射后的字段元信息, 此字段应慎重使用
-func (b *BaseModel) MetaData() *ModelMetaData { return b._meta }
+func (b *BaseModel) MetaData() *MetaData { return GetMetaData(b._pkg) }
 
-// Deprecated: Doc__ Use SchemaDesc instead.
-func (b *BaseModel) Doc__() string { return b.SchemaDesc() }
+// SetId 设置结构体的唯一标识
+func (b *BaseModel) SetId(id string) { b._pkg = id }
 
 // ValidationError 参数校验错误
 type ValidationError struct {

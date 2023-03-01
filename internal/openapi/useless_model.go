@@ -54,3 +54,15 @@ type Link struct {
 }
 
 func (l Link) Alias() string { return "" }
+
+type Tag struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+func (t Tag) Schema() map[string]string {
+	return map[string]string{
+		"name":        t.Name,
+		"description": t.Description,
+	}
+}

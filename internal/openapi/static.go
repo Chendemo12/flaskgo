@@ -16,12 +16,7 @@ const (
 	JsonUrl           = "openapi.json"
 )
 
-const (
-	ModelSelectorName = "schemas"
-	ModelRefPrefix    = "#/components/schemas/"
-	ModelRefName      = "$ref"
-)
-
+const ModelSelectorName = "schemas"
 const (
 	PathParamPrefix         = ":" // 路径参数起始字符
 	PathSeparator           = "/" // 路径分隔符

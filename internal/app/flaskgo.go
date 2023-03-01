@@ -86,7 +86,7 @@ func (f *FlaskGo) mountBaseRoutes() {
 		router.GET("/title", godantic.String, "获取软件名", func(c *Context) *Response {
 			return c.StringResponse(appEngine.title)
 		})
-		router.GET("/Description", godantic.String, "获取软件描述信息", func(c *Context) *Response {
+		router.GET("/description", godantic.String, "获取软件描述信息", func(c *Context) *Response {
 			return c.StringResponse(appEngine.Description())
 		})
 		router.GET("/version", godantic.String, "获取软件版本号", func(c *Context) *Response {
@@ -150,7 +150,6 @@ func (f *FlaskGo) initialize() *FlaskGo {
 
 	// 创建 fiber.App
 	f.engine = createFiberApp(f.title, f.version)
-
 	// 注册中间件
 	for _, middleware := range f.middlewares {
 		f.engine.Use(middleware)
@@ -160,10 +159,8 @@ func (f *FlaskGo) initialize() *FlaskGo {
 	if python.Any(mode.IsDebug(), !core.BaseRoutesDisabled) {
 		f.mountBaseRoutes()
 	}
-
 	// 挂载自定义路由
 	f.mountUserRoutes()
-
 	// 创建 OpenApi Swagger 文档, 必须等上层注册完路由之后才能调用
 	f.createOpenApiDoc()
 

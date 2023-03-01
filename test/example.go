@@ -154,13 +154,13 @@ type Clock struct {
 	flaskgo.CronJobFunc
 }
 
+func (c *Clock) String() string          { return "Clock" }
 func (c *Clock) Interval() time.Duration { return time.Second * 5 }
 
 func (c *Clock) Do(ctx context.Context) error {
 	fmt.Println(time.Now().String())
 	return nil
 }
-func (c *Clock) String() string { return "Clock" }
 
 func ExampleFlaskGo_App() {
 	flaskgo.DisableMultipleProcess()

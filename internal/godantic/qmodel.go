@@ -31,12 +31,6 @@ func (q *QModel) Schema() (m map[string]any) {
 	return
 }
 
-// SchemaRef 模型引用文档
-func (q *QModel) SchemaRef() (m map[string]any) {
-	m[RefName] = RefPrefix + q.SchemaName()
-	return
-}
-
 // SchemaName 获取结构体的名称,默认包含包名
 func (q *QModel) SchemaName(exclude ...bool) string { return q.Name }
 
