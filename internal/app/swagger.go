@@ -25,8 +25,9 @@ func (f *FlaskGo) createOpenApiDoc() {
 	}
 
 	f.service.openApi = openapi.NewOpenApi(f.title, f.version, f.Description())
+
 	f.createDefines()
-	//f.createPaths()
+	f.createPaths()
 	f.createSwaggerRoutes()
 }
 
@@ -108,39 +109,17 @@ func routeToPathItem(router *Router, route *Route, api *openapi.OpenApi) {
 	// 构造路径参数
 	pathParams := make([]*openapi.Parameter, len(route.PathFields))
 	for no, q := range route.PathFields {
-		p := &openapi.Parameter{
-			ParameterBase: openapi.ParameterBase{
-				Description: q.SchemaDesc(),
-				Required:    q.IsRequired(),
-				Deprecated:  route.deprecated,
-				Schema: openapi.Reference{
-					Name: q.SchemaName(),
-				},
-			},
-			Name: q.Name,
-			In:   openapi.InPath,
-		}
+		p := openapi.QModelToParameter(q)
+		p.Deprecated = route.deprecated
 
 		pathParams[no] = p
 	}
 
-	println(python.Repr(pathParams[0]))
-
 	// 构造查询参数
 	queryParams := make([]*openapi.Parameter, len(route.QueryFields))
 	for no, q := range route.QueryFields {
-		p := &openapi.Parameter{
-			ParameterBase: openapi.ParameterBase{
-				Description: q.SchemaDesc(),
-				Required:    q.IsRequired(),
-				Deprecated:  route.deprecated,
-				Schema: openapi.Reference{
-					Name: q.SchemaName(),
-				},
-			},
-			Name: q.Name,
-			In:   openapi.InQuery,
-		}
+		p := openapi.QModelToParameter(q)
+		p.Deprecated = route.deprecated
 		queryParams[no] = p
 	}
 

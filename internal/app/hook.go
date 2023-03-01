@@ -117,11 +117,11 @@ func jsoniterUnmarshalErrorToValidationError(err error) *ValidationError {
 func routeParamsValidate(ctx *Context, route *Route) *Response {
 	// 路径参数校验
 	for i := 0; i < len(route.PathFields); i++ {
-		ctx.PathFields[route.PathFields[i].Name] = ctx.Context().Params(route.PathFields[i].Name)
-		if route.PathFields[i].IsRequired() && ctx.PathFields[route.PathFields[i].Name] == "" {
+		ctx.PathFields[route.PathFields[i].Title] = ctx.Context().Params(route.PathFields[i].Title)
+		if route.PathFields[i].IsRequired() && ctx.PathFields[route.PathFields[i].Title] == "" {
 			// 不存在此路径参数, 但是此路径参数设置为必选
 			return ValidationErrorResponse(&ValidationError{
-				Loc:  []string{"path", route.PathFields[i].Name},
+				Loc:  []string{"path", route.PathFields[i].Title},
 				Msg:  "path must not be empty",
 				Type: "string",
 				Ctx:  nil,
@@ -131,11 +131,11 @@ func routeParamsValidate(ctx *Context, route *Route) *Response {
 
 	// 查询参数校验
 	for i := 0; i < len(route.QueryFields); i++ {
-		ctx.QueryFields[route.QueryFields[i].Name] = ctx.Context().Query(route.QueryFields[i].Name)
-		if route.QueryFields[i].IsRequired() && ctx.QueryFields[route.QueryFields[i].Name] == "" {
+		ctx.QueryFields[route.QueryFields[i].Title] = ctx.Context().Query(route.QueryFields[i].Title)
+		if route.QueryFields[i].IsRequired() && ctx.QueryFields[route.QueryFields[i].Title] == "" {
 			// 但是此查询参数设置为必选
 			return ValidationErrorResponse(&ValidationError{
-				Loc:  []string{"query", route.QueryFields[i].Name},
+				Loc:  []string{"query", route.QueryFields[i].Title},
 				Msg:  "query must not be empty",
 				Type: "string",
 				Ctx:  nil,

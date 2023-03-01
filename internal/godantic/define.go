@@ -1,11 +1,32 @@
 package godantic
 
-type Define struct {
+var (
+	String = &str{}
+	Str    = &str{}
+)
+
+type str struct {
 	BaseModel
-	Name string
 }
 
-var String = &Define{Name: "String"}
+// Schema 输出为OpenAPI文档模型,字典格式
+func (d *str) Schema() (m map[string]any) {
+	m = make(map[string]any)
+	m["title"] = StringType
+	return
+}
+
+// SchemaName 获取结构体的名称,默认包含包名
+func (d *str) SchemaName(exclude ...bool) string { return string(StringType) }
+
+// SchemaDesc 结构体文档注释
+func (d *str) SchemaDesc() string { return string(StringType) }
+
+// SchemaType 模型类型
+func (d *str) SchemaType() OpenApiDataType { return StringType }
+
+// IsRequired 字段是否必须
+func (d *str) IsRequired() bool { return true }
 
 //
 //var (

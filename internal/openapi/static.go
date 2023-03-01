@@ -2,6 +2,7 @@ package openapi
 
 import (
 	"github.com/Chendemo12/flaskgo/internal/godantic"
+	"net/http"
 )
 
 const ApiVersion = "3.0.2"
@@ -16,7 +17,6 @@ const (
 	JsonUrl           = "openapi.json"
 )
 
-const ModelSelectorName = "schemas"
 const (
 	PathParamPrefix         = ":" // 路径参数起始字符
 	PathSeparator           = "/" // 路径分隔符
@@ -62,7 +62,7 @@ var validationErrorDefinition = dict{
 			"items": dict{"anyOf": []map[string]string{{"type": "string"}, {"type": "integer"}}},
 		},
 		"msg":  dict{"title": "Message", "type": "string"},
-		"type": dict{"title": "Error RType", "type": "string"},
+		"type": dict{"title": "Error Type", "type": "string"},
 	},
 	"required": []string{"loc", "msg", "type"},
 }
@@ -101,5 +101,22 @@ var customErrorDefinition = dict{
 			"description": "ValidationError",
 		},
 		"description": "CustomValidationError",
+	},
+}
+
+var Resp422 = &Response{
+	StatusCode:  http.StatusUnprocessableEntity,
+	Description: http.StatusText(http.StatusUnprocessableEntity),
+	Content: &PathModelContent{
+		MIMEType: MIMEApplicationJSON,
+		Schema: &ObjectModelContentSchema{
+			BaseModelContentSchema: BaseModelContentSchema{
+				Title: HttpValidationErrorName,
+				Type:  godantic.ObjectType,
+			},
+			Reference: Reference{
+				Name: HttpValidationErrorName,
+			},
+		},
 	},
 }

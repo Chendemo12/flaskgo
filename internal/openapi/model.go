@@ -73,7 +73,7 @@ func (c *Components) MarshalJSON() ([]byte, error) {
 	// delete
 	//m["CustomValidationError"] = customErrorDefinition
 
-	return helper.DefaultJsonMarshal(map[string]any{ModelSelectorName: m})
+	return helper.DefaultJsonMarshal(map[string]any{"schemas": m})
 }
 
 // AddModel 添加一个模型文档
@@ -97,16 +97,19 @@ const (
 type ParameterBase struct {
 	Description string `json:"description,omitempty" description:"说明"`
 	Required    bool   `json:"required" description:"是否必须"`
-	Deprecated  bool   `json:"deprecated,omitempty" description:"是否禁用"`
+	Deprecated  bool   `json:"deprecated" description:"是否禁用"`
 	// TODO: 修改，缺少字段： title, default, type
-	Schema Reference `json:"schema" description:"模型引用信息"`
+	//Schema Reference `json:"schema,omitempty" description:"模型引用信息"`
 }
 
 // Parameter 路径参数或者查询参数
 type Parameter struct {
 	ParameterBase
-	Name string          `json:"name" description:"名称"`
-	In   ParameterInType `json:"in" description:"参数位置"`
+	Title   string                   `json:"title"`
+	Name    string                   `json:"name" description:"名称"`
+	In      ParameterInType          `json:"in" description:"参数位置"`
+	Default any                      `json:"default,omitempty" description:"默认值"`
+	Type    godantic.OpenApiDataType `json:"type" description:"数据类型"`
 }
 
 type ModelContentSchema interface {
@@ -159,8 +162,8 @@ func (s ObjectModelContentSchema) Schema() map[string]any {
 
 // RequestBody 路由 请求体模型文档
 type RequestBody struct {
-	Required bool             `json:"required" description:"是否必须"`
-	Content  PathModelContent `json:"content" description:"请求体模型"`
+	Required bool              `json:"required" description:"是否必须"`
+	Content  *PathModelContent `json:"content,omitempty" description:"请求体模型"`
 }
 
 // PathModelContent 路由中请求体 RequestBody 和 响应体中返回值 Responses 模型
@@ -172,16 +175,16 @@ type PathModelContent struct {
 // MarshalJSON 自定义序列化
 func (p *PathModelContent) MarshalJSON() ([]byte, error) {
 	m := make(map[string]any)
-	m[string(p.MIMEType)] = p.Schema.Schema()
+	m[string(p.MIMEType)] = map[string]any{"schema": p.Schema.Schema()}
 
 	return helper.DefaultJsonMarshal(m)
 }
 
 // Response 路由返回体，包含了返回状态码，状态码说明和返回值模型
 type Response struct {
-	StatusCode  int              `json:"-" description:"状态码"`
-	Description string           `json:"description" description:"说明"`
-	Content     PathModelContent `json:"content" description:"返回值模型"`
+	StatusCode  int               `json:"-" description:"状态码"`
+	Description string            `json:"description" description:"说明"`
+	Content     *PathModelContent `json:"content" description:"返回值模型"`
 }
 
 // Operation 路由HTTP方法: Get/Post/Patch/Delete 等操作方法
@@ -192,10 +195,10 @@ type Operation struct {
 	OperationId string   `json:"operationId,omitempty" description:"唯一ID"` // no use, keep
 	// 路径参数和查询参数, 对于路径相同，方法不同的路由来说，其查询参数可以不一样，但其路径参数都是一样的
 	Parameters []*Parameter `json:"parameters,omitempty" description:"路径参数和查询参数"`
-	// 请求体，通过 MakeDataModelContent 构建
+	// 请求体，通过 MakeOperationRequestBody 构建
 	RequestBody *RequestBody `json:"requestBody,omitempty" description:"请求体"`
 	// 响应文档，对于任一个路由，均包含2个响应实例：200 + 422， 通过函数 MakeOperationResponses 构建
-	Responses  []*Response `json:"responses" description:"相应体"`
+	Responses  []*Response `json:"responses" description:"响应体"`
 	Deprecated bool        `json:"deprecated" description:"是否禁用"`
 }
 
@@ -203,10 +206,7 @@ type Operation struct {
 func (o *Operation) MarshalJSON() ([]byte, error) {
 	type OperationWithResponseMap struct {
 		Operation
-		Responses map[int]*Response
-	}
-
-	type OperationWithRequestBodyMap struct {
+		Responses map[int]*Response `json:"responses" description:"响应体"`
 	}
 
 	orm := OperationWithResponseMap{}

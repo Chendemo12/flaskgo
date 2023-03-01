@@ -8,11 +8,10 @@ import (
 
 // QModel 查询参数或路径参数模型, 此类型会进一步转换为 openapi.Parameter
 type QModel struct {
-	Name     string            `json:"names,omitempty" description:"字段名称"`
-	Required bool              `json:"required,omitempty" description:"是否必须"`
-	InPath   bool              `json:"in_path,omitempty" description:"是否是路径参数"`
-	Tag      reflect.StructTag `json:"tag,omitempty" description:"TAG"`
-	OType    OpenApiDataType   `json:"otype,omitempty" description:"openaapi 数据类型"`
+	Title  string            `json:"names,omitempty" description:"字段名称"`
+	InPath bool              `json:"in_path,omitempty" description:"是否是路径参数"`
+	Tag    reflect.StructTag `json:"tag,omitempty" description:"TAG"`
+	OType  OpenApiDataType   `json:"otype,omitempty" description:"openaapi 数据类型"`
 }
 
 // Schema 输出为OpenAPI文档模型,字典格式
@@ -31,17 +30,11 @@ func (q *QModel) Schema() (m map[string]any) {
 	return
 }
 
-// SchemaName 获取结构体的名称,默认包含包名
-func (q *QModel) SchemaName(exclude ...bool) string { return q.Name }
+// SchemaName 获取名称,以json字段为准
+func (q *QModel) SchemaName(exclude ...bool) string { return QueryJsonName(q.Tag, q.Title) }
 
 // SchemaDesc 结构体文档注释
-func (q *QModel) SchemaDesc() string {
-	if q.InPath {
-		return "field in path"
-	} else {
-		return "field in query"
-	}
-}
+func (q *QModel) SchemaDesc() string { return QueryFieldTag(q.Tag, "description", q.Title) }
 
 // SchemaType 模型类型
 func (q *QModel) SchemaType() OpenApiDataType { return StringType }
@@ -63,7 +56,7 @@ func (q *QModel) InnerSchema() (m map[string]map[string]any) {
 }
 
 // IsRequired 是否必须
-func (q *QModel) IsRequired() bool { return q.Required }
+func (q *QModel) IsRequired() bool { return IsFieldRequired(q.Tag) }
 
 // QueryModel 查询参数基类
 type QueryModel struct{}
@@ -81,11 +74,10 @@ func (q *QueryModel) Fields() []*QModel {
 
 		// 仅导出字段可用
 		m[i] = &QModel{
-			Name:     QueryJsonName(field.Tag, field.Name), // 以json字段为准
-			Required: IsFieldRequired(field.Tag),
-			InPath:   false,
-			Tag:      field.Tag,
-			OType:    ObjectType, // 无意义
+			Title:  field.Name,
+			InPath: false,
+			Tag:    field.Tag,
+			OType:  ObjectType, // 无意义
 		}
 	}
 	return m

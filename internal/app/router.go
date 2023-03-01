@@ -162,7 +162,7 @@ func (f *Router) method(
 		}
 	}
 
-	if !f.deprecated { // 若路由组被禁用，则此路由必禁用
+	if f.deprecated { // 若路由组被禁用，则此路由必禁用
 		deprecated = true
 	}
 
@@ -193,7 +193,7 @@ func (f *Router) method(
 	// 生成路径参数
 	if pp, found := DoesPathParamsFound(route.RelativePath); found {
 		for name, required := range pp {
-			qm := &godantic.QModel{Name: name, Required: required, InPath: true}
+			qm := &godantic.QModel{Title: name, InPath: true}
 			if required {
 				qm.Tag = reflect.StructTag(`json:"` + name + `" validate:"required" binding:"required"`)
 			} else {

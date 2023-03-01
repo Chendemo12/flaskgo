@@ -8,9 +8,13 @@ import (
 
 // MakeOperationRequestBody 将路由中的 godantic.SchemaIface 转换成 openapi 的请求体 RequestBody
 func MakeOperationRequestBody(model godantic.SchemaIface) *RequestBody {
+	if model == nil {
+		return &RequestBody{}
+	}
+
 	r := &RequestBody{
 		Required: model.IsRequired(),
-		Content: PathModelContent{
+		Content: &PathModelContent{
 			MIMEType: MIMEApplicationJSON,
 			Schema:   nil,
 		},
@@ -44,35 +48,22 @@ func MakeOperationRequestBody(model godantic.SchemaIface) *RequestBody {
 
 // MakeOperationResponses 将路由中的 godantic.SchemaIface 转换成 openapi 的返回体 []*Response
 func MakeOperationResponses(model godantic.SchemaIface) []*Response {
-	m := make([]*Response, 2) // 200 + 422
+	if model == nil { // 若返回值为空，则设置为字符串
+		model = godantic.String
+	}
 
-	// 200 接口出注册的返回值
+	m := make([]*Response, 2) // 200 + 422
+	// 200 接口处注册的返回值
 	m[0] = &Response{
 		StatusCode:  http.StatusOK,
 		Description: http.StatusText(http.StatusOK),
-		Content: PathModelContent{
+		Content: &PathModelContent{
 			MIMEType: MIMEApplicationJSON,
 			Schema:   nil,
 		},
 	}
-
 	// 422 所有接口默认携带的请求体校验错误返回值
-	m[1] = &Response{
-		StatusCode:  http.StatusUnprocessableEntity,
-		Description: http.StatusText(http.StatusUnprocessableEntity),
-		Content: PathModelContent{
-			MIMEType: MIMEApplicationJSON,
-			Schema: ObjectModelContentSchema{
-				BaseModelContentSchema: BaseModelContentSchema{
-					Title: HttpValidationErrorName,
-					Type:  godantic.ObjectType,
-				},
-				Reference: Reference{
-					Name: HttpValidationErrorName,
-				},
-			},
-		},
-	}
+	m[1] = Resp422
 
 	bcs := BaseModelContentSchema{Title: model.SchemaName(), Type: model.SchemaType()}
 	switch model.SchemaType() {
@@ -151,4 +142,25 @@ func FastApiRoutePath(path string) string {
 	}
 
 	return strings.Join(paths, PathSeparator)
+}
+
+func QModelToParameter(model *godantic.QModel) *Parameter {
+	p := &Parameter{
+		ParameterBase: ParameterBase{
+			Description: model.SchemaDesc(),
+			Required:    model.IsRequired(),
+			Deprecated:  false,
+		},
+		Title:   model.Title,
+		Name:    model.SchemaName(),
+		In:      InQuery,
+		Default: godantic.GetDefaultV(model.Tag, model.SchemaType()),
+		Type:    model.SchemaType(),
+	}
+
+	if model.InPath {
+		p.In = InPath
+	}
+
+	return p
 }
