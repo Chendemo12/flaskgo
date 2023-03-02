@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/Chendemo12/flaskgo/internal/core"
 	"github.com/Chendemo12/flaskgo/internal/godantic"
-	"github.com/Chendemo12/flaskgo/internal/mode"
 	"github.com/Chendemo12/functools/logger"
 	"github.com/Chendemo12/functools/python"
 	"github.com/go-playground/validator/v10"
@@ -95,8 +94,8 @@ func (f *FlaskGo) mountBaseRoutes() {
 		router.GET("/heartbeat", godantic.String, "心跳检测", func(c *Context) *Response {
 			return c.StringResponse("pong")
 		})
-		router.GET("/debug", &DebugMode{}, "获取调试开关", func(c *Context) *Response {
-			return c.OKResponse(DebugMode{Mode: mode.GetMode()})
+		router.GET("/debug", godantic.Bool, "获取调试开关", func(c *Context) *Response {
+			return c.OKResponse(core.IsDebug())
 		})
 	}
 	f.routers = append(f.routers, router)
@@ -146,7 +145,7 @@ func (f *FlaskGo) mountUserRoutes() {
 //  5. 挂载自定义路由 mountUserRoutes
 //  6. 安装创建swagger文档 makeSwaggerDocs
 func (f *FlaskGo) initialize() *FlaskGo {
-	f.service.Logger().Info("Run mode: " + mode.GetMode())
+	f.service.Logger().Info("Run mode: " + core.GetMode())
 
 	// 创建 fiber.App
 	f.engine = createFiberApp(f.title, f.version)
@@ -156,7 +155,7 @@ func (f *FlaskGo) initialize() *FlaskGo {
 	}
 
 	// 挂载基础路由
-	if python.Any(mode.IsDebug(), !core.BaseRoutesDisabled) {
+	if python.Any(core.IsDebug(), !core.BaseRoutesDisabled) {
 		f.mountBaseRoutes()
 	}
 	// 挂载自定义路由
@@ -200,6 +199,7 @@ func (f *FlaskGo) Title() string   { return f.title }
 func (f *FlaskGo) Host() string    { return f.host }
 func (f *FlaskGo) Port() string    { return f.port }
 func (f *FlaskGo) Version() string { return f.version }
+func (f *FlaskGo) IsDebug() bool   { return core.IsDebug() }
 
 // Description 描述信息，同时会显示在Swagger文档上
 func (f *FlaskGo) Description() string { return f.description }
@@ -350,10 +350,10 @@ func (f *FlaskGo) ActivateHotSwitch() *FlaskGo {
 
 	go func() {
 		for range swt {
-			if mode.IsDebug() {
-				resetRunMode(mode.ProdMode)
+			if f.IsDebug() {
+				resetRunMode(false)
 			} else {
-				resetRunMode(mode.DevMode)
+				resetRunMode(true)
 			}
 		}
 	}()
@@ -419,11 +419,7 @@ func (f *FlaskGo) Run(host, port string) {
 // @param   service  CustomContextIface  custom ServiceContext
 // @return  *FlaskGo flaskgo对象
 func NewFlaskGo(title, version string, debug bool, ctx CustomContextIface) *FlaskGo {
-	if debug {
-		mode.SetMode(mode.DevMode)
-	} else {
-		mode.SetMode(mode.ProdMode)
-	}
+	core.SetMode(debug)
 
 	once.Do(func() {
 		appEngine = &FlaskGo{

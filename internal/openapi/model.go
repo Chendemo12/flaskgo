@@ -95,21 +95,19 @@ const (
 
 // ParameterBase 各种参数的基类
 type ParameterBase struct {
-	Description string `json:"description,omitempty" description:"说明"`
-	Required    bool   `json:"required" description:"是否必须"`
-	Deprecated  bool   `json:"deprecated" description:"是否禁用"`
-	// TODO: 修改，缺少字段： title, default, type
-	//Schema Reference `json:"schema,omitempty" description:"模型引用信息"`
+	Description string                   `json:"description,omitempty" description:"说明"`
+	Required    bool                     `json:"required" description:"是否必须"`
+	Deprecated  bool                     `json:"deprecated" description:"是否禁用"`
+	Type        godantic.OpenApiDataType `json:"type" description:"数据类型"`
 }
 
 // Parameter 路径参数或者查询参数
 type Parameter struct {
 	ParameterBase
-	Title   string                   `json:"title"`
-	Name    string                   `json:"name" description:"名称"`
-	In      ParameterInType          `json:"in" description:"参数位置"`
-	Default any                      `json:"default,omitempty" description:"默认值"`
-	Type    godantic.OpenApiDataType `json:"type" description:"数据类型"`
+	Title   string          `json:"title"`
+	Name    string          `json:"name" description:"名称"`
+	In      ParameterInType `json:"in" description:"参数位置"`
+	Default any             `json:"default,omitempty" description:"默认值"`
 }
 
 type ModelContentSchema interface {

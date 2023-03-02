@@ -150,12 +150,12 @@ func QModelToParameter(model *godantic.QModel) *Parameter {
 			Description: model.SchemaDesc(),
 			Required:    model.IsRequired(),
 			Deprecated:  false,
+			Type:        model.SchemaType(),
 		},
 		Title:   model.Title,
 		Name:    model.SchemaName(),
 		In:      InQuery,
 		Default: godantic.GetDefaultV(model.Tag, model.SchemaType()),
-		Type:    model.SchemaType(),
 	}
 
 	if model.InPath {

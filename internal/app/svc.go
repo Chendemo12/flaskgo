@@ -24,10 +24,6 @@ type Context struct {
 	ec          *fiber.Ctx
 }
 
-// Version 获取版本号
-// @return  string 版本号
-func (c *Context) Version() string { return Version }
-
 // Service 获取 FlaskGo 的 Service 服务依赖信息
 // @return  Service 服务依赖信息
 func (c *Context) Service() *Service { return c.app.Service() }

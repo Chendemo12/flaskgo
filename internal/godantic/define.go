@@ -1,32 +1,142 @@
 package godantic
 
 var (
-	String = &str{}
-	Str    = &str{}
+	String  = &str{}
+	Bool    = &boolean{}
+	Int     = &integer{}
+	Int8    = &integer{}
+	Int16   = &integer{}
+	Int32   = &integer{}
+	Int64   = &integer{}
+	Uint8   = &integer{}
+	Uint16  = &integer{}
+	Uint32  = &integer{}
+	Uint64  = &integer{}
+	Float32 = &float{}
+	Float64 = &float{}
+
+	// Mapping = openapi.Mapping
+	//
+
+	// Array   = openapi.List
+	// List    = openapi.List
+	// Ints    = &openapi.RouteModel{Model: Int32, Struct: Int32, RetArray: true}
+	// Bytes   = &openapi.RouteModel{Model: Uint8, Struct: Uint8, RetArray: true}
+	// Strings = &openapi.RouteModel{Model: String, Struct: String, RetArray: true}
+	// Floats  = &openapi.RouteModel{Model: Float64, Struct: Float64, RetArray: true}
 )
+
+func init() {
+	// 初始化基本类型
+	String.SetId("godantic.str")
+	SetMetaData(newEmptyMeta("str"))
+	Bool.SetId("godantic.bool")
+	SetMetaData(newEmptyMeta("bool"))
+	// integer
+	Int.SetId("godantic.int")
+	SetMetaData(newEmptyMeta("int"))
+	Int8.SetId("godantic.int8")
+	SetMetaData(newEmptyMeta("int8"))
+	Int16.SetId("godantic.int16")
+	SetMetaData(newEmptyMeta("int16"))
+	Int32.SetId("godantic.int32")
+	SetMetaData(newEmptyMeta("int32"))
+	Int64.SetId("godantic.int64")
+	SetMetaData(newEmptyMeta("int64"))
+
+	Uint8.SetId("godantic.uint8")
+	SetMetaData(newEmptyMeta("uint8"))
+	Uint16.SetId("godantic.uint16")
+	SetMetaData(newEmptyMeta("uint16"))
+	Uint32.SetId("godantic.uint32")
+	SetMetaData(newEmptyMeta("uint32"))
+	Uint64.SetId("godantic.uint64")
+	SetMetaData(newEmptyMeta("uint64"))
+
+	Float32.SetId("godantic.float32")
+	SetMetaData(newEmptyMeta("float32"))
+	Float64.SetId("godantic.float64")
+	SetMetaData(newEmptyMeta("float64"))
+}
+
+func newEmptyMeta(name string) *MetaData {
+	return &MetaData{
+		names:       []string{name, "godantic." + name},
+		fields:      make([]*Field, 0),
+		innerFields: make([]*Field, 0),
+	}
+}
 
 type str struct {
 	BaseModel
 }
 
-// Schema 输出为OpenAPI文档模型,字典格式
+// SchemaName 获取结构体的名称,默认包含包名
+func (d *str) SchemaName(exclude ...bool) string { return string(StringType) }
+func (d *str) SchemaDesc() string                { return string(StringType) }
+func (d *str) SchemaType() OpenApiDataType       { return StringType }
+func (d *str) IsRequired() bool                  { return true }
 func (d *str) Schema() (m map[string]any) {
 	m = make(map[string]any)
 	m["title"] = StringType
 	return
 }
 
-// SchemaName 获取结构体的名称,默认包含包名
-func (d *str) SchemaName(exclude ...bool) string { return string(StringType) }
+type boolean struct {
+	BaseModel
+}
 
-// SchemaDesc 结构体文档注释
-func (d *str) SchemaDesc() string { return string(StringType) }
+func (d *boolean) SchemaName(exclude ...bool) string { return string(BoolType) }
+func (d *boolean) SchemaDesc() string                { return string(BoolType) }
+func (d *boolean) SchemaType() OpenApiDataType       { return BoolType }
+func (d *boolean) IsRequired() bool                  { return true }
+func (d *boolean) Schema() (m map[string]any) {
+	m = make(map[string]any)
+	m["title"] = BoolType
+	return
+}
 
-// SchemaType 模型类型
-func (d *str) SchemaType() OpenApiDataType { return StringType }
+type integer struct {
+	BaseModel
+}
 
-// IsRequired 字段是否必须
-func (d *str) IsRequired() bool { return true }
+func (d *integer) SchemaName(exclude ...bool) string { return string(IntegerType) }
+func (d *integer) SchemaDesc() string                { return string(IntegerType) }
+func (d *integer) SchemaType() OpenApiDataType       { return IntegerType }
+func (d *integer) IsRequired() bool                  { return true }
+func (d *integer) Schema() (m map[string]any) {
+	m = make(map[string]any)
+	m["title"] = IntegerType
+	return
+}
+
+type float struct {
+	BaseModel
+}
+
+func (d *float) SchemaName(exclude ...bool) string { return string(NumberType) }
+func (d *float) SchemaDesc() string                { return string(NumberType) }
+func (d *float) SchemaType() OpenApiDataType       { return NumberType }
+func (d *float) IsRequired() bool                  { return true }
+func (d *float) Schema() (m map[string]any) {
+	m = make(map[string]any)
+	m["title"] = NumberType
+	return
+}
+
+func List(model SchemaIface) *Field {
+	return &Field{
+		Title:     model.SchemaName(),
+		Index:     0,
+		Default:   nil,
+		Exported:  true,
+		Anonymous: false,
+		Tag:       "",
+		ItemRef:   model.SchemaName(),
+		RType:     nil,
+		_pkg:      "",
+	}
+}
 
 //
 //var (
@@ -122,9 +232,9 @@ func (d *str) IsRequired() bool { return true }
 //)
 //
 //type BaseModelIface interface {
-//	Doc__() string // 模型描述
+//	SchemaDesc() string // 模型描述
 //}
 //
 //type BaseModel struct{}
 //
-//func (b BaseModel) Doc__() string { return "" }
+//func (b BaseModel) SchemaDesc() string { return "" }

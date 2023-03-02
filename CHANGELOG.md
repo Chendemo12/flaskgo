@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 0.3.0 - (2023-03-02)
+
+### BREAKING
+
+- 重写`OpenApi`文档自动生成方案，引入`OpenApi`对象;
+- 重写基本模型`BaseModel`，引入`godantic`包及系列接口;
+- 修改`HandlerFunc`函数签名;
+- 修改`CronJob`签名及实现;
+- 删除原表示运行模式的包`mode`;
+- 删除`zaplog`，`FlaskGo`的默认日志句柄由标准库`log`实现;
+- 删除`FlaskGo`的控制台日志输出，仅保留`Logger()`接口;
+
 ## 0.2.9 - (2023-01-01)
 
 ### Feat

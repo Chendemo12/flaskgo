@@ -6,14 +6,14 @@ import (
 	"unicode"
 )
 
-var metaDataFactory = &MetaClass{}
+var metaDataFactory = &MetaClass{data: make([]*MetaData, 0)}
 
 func GetMetaDataFactory() *MetaClass   { return metaDataFactory }
 func GetMetaData(pkg string) *MetaData { return metaDataFactory.Get(pkg) }
 func SetMetaData(data *MetaData)       { metaDataFactory.Set(data) }
 
 type MetaData struct {
-	names       []string `description:"结构体名称,包名+结构体名称"`
+	names       []string `description:"结构体名称,结构体名称,包名.结构体名称"`
 	fields      []*Field `description:"结构体字段"`
 	innerFields []*Field `description:"内部字段"`
 }

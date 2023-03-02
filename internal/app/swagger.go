@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"github.com/Chendemo12/flaskgo/internal/core"
 	"github.com/Chendemo12/flaskgo/internal/godantic"
-	"github.com/Chendemo12/flaskgo/internal/mode"
 	"github.com/Chendemo12/flaskgo/internal/openapi"
 	"github.com/Chendemo12/functools/python"
 	"github.com/gofiber/fiber/v2"
@@ -20,7 +19,7 @@ func (d DebugMode) SchemaDesc() string { return "调试模式模型" }
 
 func (f *FlaskGo) createOpenApiDoc() {
 	// 不允许创建swag文档
-	if python.All(!mode.IsDebug(), core.SwaggerDisabled) {
+	if python.All(!core.IsDebug(), core.SwaggerDisabled) {
 		return
 	}
 

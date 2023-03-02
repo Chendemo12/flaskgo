@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/Chendemo12/flaskgo/internal/godantic"
 	"github.com/gofiber/fiber/v2"
 	"net/http"
 )
@@ -52,11 +53,12 @@ type HTTPValidationError struct {
 func (v HTTPValidationError) Doc__() string { return "HTTPValidationError" }
 
 type CustomError404 struct {
-	ErrorCode string `json:"error_code" Description:"Error Code" binding:"required"`
+	godantic.BaseModel
 	ValidationError
+	ErrorCode string `json:"error_code" Description:"Error Code" binding:"required"`
 }
 
-func (v CustomError404) Doc__() string { return "CustomError404" }
+func (v CustomError404) SchemaDesc() string { return "CustomError404" }
 
 // ValidationErrorResponse 参数校验错误返回值
 func ValidationErrorResponse(ves ...*ValidationError) *Response {

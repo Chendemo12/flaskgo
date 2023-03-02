@@ -1,7 +1,5 @@
 package godantic
 
-var MethodsWithBody = []string{"GET", "HEAD", "POST", "PUT", "DELETE", "PATCH"}
-
 const (
 	RefName   = "$ref"
 	RefPrefix = "#/components/schemas/"

@@ -2,12 +2,14 @@ package app
 
 import (
 	"github.com/Chendemo12/flaskgo/internal/constant"
+	"github.com/Chendemo12/flaskgo/internal/core"
 	"strings"
 )
 
 // resetRunMode 重设运行时环境
 // @param  md  string  开发环境
-func resetRunMode(md string) {
+func resetRunMode(md bool) {
+	core.SetMode(md)
 }
 
 // DoesPathParamsFound 是否查找到路径参数

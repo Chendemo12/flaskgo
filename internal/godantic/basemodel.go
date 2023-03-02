@@ -10,8 +10,7 @@ import (
 
 type dict map[string]any
 
-// Field 数据模型 BaseModel 的字段类型
-// 对于 BaseModel 其字段仍然可能会 BaseModel,
+// Field 基本数据模型, 此模型不可再分, 同时也是 BaseModel 的字段类型
 // 但此类型不再递归记录,仅记录一个关联模型为基本
 type Field struct {
 	Title     string            `json:"title" description:"字段名称"`
@@ -22,6 +21,7 @@ type Field struct {
 	Tag       reflect.StructTag `json:"tag" description:"字段标签"`
 	ItemRef   string            `description:"子元素类型, 仅Type=array/object时有效"`
 	RType     reflect.Type      `description:"反射字段类型"`
+	_pkg      string
 }
 
 // Schema 生成字段的详细描述信息
@@ -171,10 +171,13 @@ func (f *Field) InnerSchema() (m map[string]map[string]any) {
 	return
 }
 
+func (f *Field) MetaData() *MetaData { return GetMetaData(f._pkg) }
+
+func (f *Field) SetId(id string) { f._pkg = id }
+
 // BaseModel 基本数据模型, 对于上层的 app.Route 其请求和相应体都应为继承此结构体的结构体
 // 在 OpenApi 文档模型中,此模型的类型始终为 "object";
-// 此类型无需再次转换, 直接将其 Schema 文档添加到 openapi.OpenApi 的模型Definitions定义中,
-// 并在路由中通过引用关联模型
+// 对于 BaseModel 其字段仍然可能会 BaseModel
 type BaseModel struct {
 	_pkg string
 }
@@ -265,15 +268,6 @@ func (b *BaseModel) InnerSchema() (m map[string]map[string]any) {
 }
 
 func (b *BaseModel) IsRequired() bool { return true }
-
-// String 将结构体序列化为字符串
-func (b *BaseModel) String() string {
-	if bytes, err := helper.DefaultJsonMarshal(b); err != nil {
-		return ""
-	} else {
-		return string(bytes)
-	}
-}
 
 // Map 将结构体转换为字典视图
 func (b *BaseModel) Map() (m map[string]any) {
