@@ -88,9 +88,9 @@ type Action struct {
 
 type ExampleForm struct {
 	flaskgo.BaseModel
-	Name    string     `json:"name"`
-	Action  *Action    `json:"action"`
-	Actions [][]Action `json:"actions"`
+	Name    string    `json:"name"`
+	Action  *Action   `json:"action"`
+	Actions []*Action `json:"actions"`
 }
 
 func makeTunnelWork(s *flaskgo.Context) *flaskgo.Response {

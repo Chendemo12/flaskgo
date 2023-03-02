@@ -5,73 +5,73 @@ func init() {
 	String.SetId("godantic.str")
 	String.Description = QueryFieldTag(String.Tag, "description", String.SchemaName())
 	String.Default = QueryFieldTag(String.Tag, "default", "")
-	SetMetaData(newEmptyMeta("str"))
+	SaveMetaData(newEmptyMeta("str"))
 
 	Bool.SetId("godantic.bool")
 	Bool.Description = QueryFieldTag(Bool.Tag, "description", Bool.SchemaName())
 	Bool.Default = QueryFieldTag(Bool.Tag, "default", "")
-	SetMetaData(newEmptyMeta("bool"))
+	SaveMetaData(newEmptyMeta("bool"))
 
 	// integer
 	Int.SetId("godantic.int")
 	Int.Description = QueryFieldTag(Int.Tag, "description", Int.SchemaName())
 	Int.Default = QueryFieldTag(Int.Tag, "default", "")
-	SetMetaData(newEmptyMeta("int"))
+	SaveMetaData(newEmptyMeta("int"))
 
 	Int8.SetId("godantic.int8")
 	Int8.Description = QueryFieldTag(Int8.Tag, "description", Int8.SchemaName())
 	Int8.Default = QueryFieldTag(Int8.Tag, "default", "")
-	SetMetaData(newEmptyMeta("int8"))
+	SaveMetaData(newEmptyMeta("int8"))
 
 	Int16.SetId("godantic.int16")
 	Int16.Description = QueryFieldTag(Int16.Tag, "description", Int16.SchemaName())
 	Int16.Default = QueryFieldTag(Int16.Tag, "default", "")
-	SetMetaData(newEmptyMeta("int16"))
+	SaveMetaData(newEmptyMeta("int16"))
 
 	Int32.SetId("godantic.int32")
 	Int32.Description = QueryFieldTag(Int32.Tag, "description", Int32.SchemaName())
 	Int32.Default = QueryFieldTag(Int32.Tag, "default", "")
-	SetMetaData(newEmptyMeta("int32"))
+	SaveMetaData(newEmptyMeta("int32"))
 
 	Int64.SetId("godantic.int64")
 	Int64.Description = QueryFieldTag(Int64.Tag, "description", Int64.SchemaName())
 	Int64.Default = QueryFieldTag(Int64.Tag, "default", "")
-	SetMetaData(newEmptyMeta("int64"))
+	SaveMetaData(newEmptyMeta("int64"))
 
 	Uint8.SetId("godantic.uint8")
 	Uint8.Description = QueryFieldTag(Uint8.Tag, "description", Uint8.SchemaName())
 	Uint8.Default = QueryFieldTag(Uint8.Tag, "default", "")
-	SetMetaData(newEmptyMeta("uint8"))
+	SaveMetaData(newEmptyMeta("uint8"))
 
 	Uint16.SetId("godantic.uint16")
 	Uint16.Description = QueryFieldTag(Uint16.Tag, "description", Uint16.SchemaName())
 	Uint16.Default = QueryFieldTag(Uint16.Tag, "default", "")
-	SetMetaData(newEmptyMeta("uint16"))
+	SaveMetaData(newEmptyMeta("uint16"))
 
 	Uint32.SetId("godantic.uint32")
 	Uint32.Description = QueryFieldTag(Uint32.Tag, "description", Uint32.SchemaName())
 	Uint32.Default = QueryFieldTag(Uint32.Tag, "default", "")
-	SetMetaData(newEmptyMeta("uint32"))
+	SaveMetaData(newEmptyMeta("uint32"))
 
 	Uint64.SetId("godantic.uint64")
 	Uint64.Description = QueryFieldTag(Uint64.Tag, "description", Uint64.SchemaName())
 	Uint64.Default = QueryFieldTag(Uint64.Tag, "default", "")
-	SetMetaData(newEmptyMeta("uint64"))
+	SaveMetaData(newEmptyMeta("uint64"))
 
 	Float.SetId("godantic.float")
 	Float.Description = QueryFieldTag(Float.Tag, "description", Float.SchemaName())
 	Float.Default = QueryFieldTag(Float.Tag, "default", "")
-	SetMetaData(newEmptyMeta("float64"))
+	SaveMetaData(newEmptyMeta("float64"))
 
 	Float32.SetId("godantic.float32")
 	Float32.Description = QueryFieldTag(Float32.Tag, "description", Float32.SchemaName())
 	Float32.Default = QueryFieldTag(Float32.Tag, "default", "")
-	SetMetaData(newEmptyMeta("float32"))
+	SaveMetaData(newEmptyMeta("float32"))
 
 	Float64.SetId("godantic.float64")
 	Float64.Description = QueryFieldTag(Float64.Tag, "description", Float64.SchemaName())
 	Float64.Default = QueryFieldTag(Float64.Tag, "default", "")
-	SetMetaData(newEmptyMeta("float64"))
+	SaveMetaData(newEmptyMeta("float64"))
 }
 
 func newEmptyMeta(name string) *MetaData {
@@ -210,7 +210,7 @@ var (
 
 func List(model SchemaIface) *Field {
 	meta := GetMetaDataFactory().Reflect(model)
-	SetMetaData(meta)
+	SaveMetaData(meta)
 	model.SetId(meta.Id())
 
 	return &Field{

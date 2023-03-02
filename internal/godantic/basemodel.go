@@ -110,7 +110,7 @@ func (f *Field) Schema() (m map[string]any) {
 		// 为数组类型生成子类型描述
 		if f.ItemRef != "" {
 			if strings.HasPrefix(f.ItemRef, RefPrefix) { // 数组子元素为关联类型
-				m["items"] = map[string]string{"$ref": f.ItemRef}
+				m["items"] = map[string]string{"$ref": RefPrefix + f.ItemRef}
 			} else { // 子元素为基本数据类型
 				m["items"] = map[string]string{"type": f.ItemRef}
 			}
@@ -127,7 +127,7 @@ func (f *Field) Schema() (m map[string]any) {
 
 	case ObjectType:
 		if f.ItemRef != "" { // 字段类型为自定义结构体，生成关联类型，此内部结构体已注册
-			m["$ref"] = f.ItemRef
+			m["$ref"] = RefPrefix + f.ItemRef
 		}
 
 	default:

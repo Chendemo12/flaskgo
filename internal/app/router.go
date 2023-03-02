@@ -137,13 +137,13 @@ func (f *Router) method(
 ) *Route {
 	if requestModel != nil {
 		meta := godantic.GetMetaDataFactory().Reflect(requestModel)
-		godantic.SetMetaData(meta)
+		godantic.SaveMetaData(meta)
 		requestModel.SetId(meta.Id())
 	}
 	if responseModel != nil {
 		meta := godantic.GetMetaDataFactory().Reflect(responseModel)
 		responseModel.SetId(meta.Id())
-		godantic.SetMetaData(meta)
+		godantic.SaveMetaData(meta)
 	}
 	// 路由处理函数，默认仅一个
 	handlers := []fiber.Handler{routeHandler(handler)}

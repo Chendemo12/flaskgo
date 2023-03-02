@@ -10,7 +10,7 @@ var metaDataFactory = &MetaClass{data: make([]*MetaData, 0)}
 
 func GetMetaDataFactory() *MetaClass   { return metaDataFactory }
 func GetMetaData(pkg string) *MetaData { return metaDataFactory.Get(pkg) }
-func SetMetaData(data *MetaData)       { metaDataFactory.Set(data) }
+func SaveMetaData(data *MetaData)      { metaDataFactory.Set(data) }
 
 type MetaField struct {
 	Field
@@ -21,7 +21,7 @@ type MetaField struct {
 }
 
 type MetaData struct {
-	names       []string     `description:"结构体名称,结构体名称,包名.结构体名称"`
+	names       []string     `description:"结构体名称,包名.结构体名称"`
 	fields      []*MetaField `description:"结构体字段"`
 	innerFields []*MetaField `description:"内部字段"`
 }
@@ -69,7 +69,7 @@ func (m *MetaClass) Get(pkg string) *MetaData { return m.Query(pkg) }
 
 func (m *MetaClass) Set(meta *MetaData) { m.Save(meta) }
 
-func (m *MetaClass) structFieldToMetaField(field reflect.StructField) *MetaField {
+func structFieldToMetaField(field reflect.StructField) *MetaField {
 	mf := &MetaField{
 		Field: Field{
 			_pkg:        field.PkgPath,
@@ -85,114 +85,126 @@ func (m *MetaClass) structFieldToMetaField(field reflect.StructField) *MetaField
 		Anonymous: field.Anonymous,
 		RType:     field.Type,
 	}
-	//meta.innerFields = append(meta.innerFields, mf)
 	return mf
 }
 
-// 反射模型获取字段信息
-func (m *MetaClass) reflectModel(rtype reflect.Type, meta *MetaData, no int) {
-	if rtype.Kind() == reflect.Interface {
-		return
-	}
-	if rtype.Kind() == reflect.Pointer {
-		rtype = rtype.Elem()
-	}
-
-	switch reflectKindToOType(rtype.Kind()) {
-	case IntegerType:
-		//tianjia
-		return
-	case StringType:
-		return
-	case BoolType:
-		return
-	case NumberType:
-		return
+// 处理数组元素
+// @param elemType reflect.Type 子元素类型
+// @param metadata *MetaData 根模型元信息
+// @param metaField *MetaField 字段元信息
+func parseArrayField(elemType reflect.Type, metadata *MetaData, fieldMeta *MetaField, no int) {
+	if elemType.Kind() == reflect.Pointer { // 数组元素为指针结构体
+		elemType = elemType.Elem()
 	}
 
-	for i := 0; i < rtype.NumField(); i++ { // 此时rtype必须不是指针
-		field := rtype.Field(i)
+	// 处理数组的子元素
+	switch elemType.Kind() {
 
-		if field.Anonymous && (field.Name == "BaseModel" || field.Name == "Field") { // 过滤模型基类
-			continue
+	case reflect.Array, reflect.Slice, reflect.Chan: // [][]*Student
+		fieldMeta.OType = ArrayType
+		fieldMeta.ItemRef = elemType.String()
+
+		mf := &MetaField{
+			Field: Field{
+				_pkg:        elemType.String(),
+				Title:       elemType.String(),
+				Tag:         "",
+				Description: "",
+				Default:     "",
+				ItemRef:     "",
+				OType:       ArrayType,
+			},
+			Index:     0,
+			Exported:  true,
+			Anonymous: false,
+			RType:     elemType.Elem(),
 		}
-		if strings.HasPrefix(field.Name, "_") { // 过滤约定的匿名字段
-			continue
+		no += 1
+		parseArrayField(elemType.Elem(), metadata, mf, no)
+
+	case reflect.Struct:
+		fieldMeta.ItemRef = elemType.String()
+		no += 1
+		for i := 0; i < elemType.NumField(); i++ { // 此时必不是指针
+			field := elemType.Field(i)
+			extractField(field, metadata, no) // 递归
 		}
 
-		// ---------------------------------- 获取字段信息 ----------------------------------
+	default:
+		fieldMeta.ItemRef = elemType.String()
+	}
+}
 
-		fieldMeta := m.structFieldToMetaField(field)
+// 提取结构体字段信息并添加到元信息中
+func extractField(field reflect.StructField, meta *MetaData, no int) {
+	if field.Anonymous && (field.Name == "BaseModel" || field.Name == "Field") { // 过滤模型基类
+		return
+	}
+	if strings.HasPrefix(field.Name, "_") { // 过滤约定的匿名字段
+		return
+	}
 
-		if no > 0 { // 递归获取的内部字段
-			meta.innerFields = append(meta.innerFields, fieldMeta)
+	// ---------------------------------- 获取字段信息 ----------------------------------
+
+	fieldMeta := structFieldToMetaField(field)
+	if no < 1 { // 根模型字段
+		meta.fields = append(meta.fields, fieldMeta)
+	} else {
+		meta.innerFields = append(meta.innerFields, fieldMeta)
+	}
+
+	switch fieldMeta.OType {
+	case IntegerType, NumberType, BoolType, StringType:
+		return // 基本类型,无需继续递归处理
+
+	case ArrayType: // 字段为数组
+		no += 1
+		parseArrayField(field.Type.Elem(), meta, fieldMeta, no)
+
+	case ObjectType: // 字段为结构体，指针，接口，map等
+		if field.Type.Kind() == reflect.Interface || field.Type.Kind() == reflect.Map {
+			return // 接口或map无需继续向下递归
+		}
+
+		// 结构体或结构体指针
+		var nextFieldType reflect.Type
+		if field.Type.Kind() == reflect.Pointer {
+			nextFieldType = field.Type.Elem()
 		} else {
-			meta.fields = append(meta.fields, fieldMeta)
+			nextFieldType = field.Type
 		}
 
-		switch fieldMeta.OType {
-		case ArrayType:
-			fieldMeta.ItemRef = field.Name
-			no += 1
-			m.reflectModel(field.Type.Elem(), meta, no)
-
-		case ObjectType:
-			no += 1
-			m.reflectModel(field.Type, meta, no)
-
-		default:
-			continue // 获取下一个字段信息
+		fieldMeta.ItemRef = nextFieldType.String() // 关联模型
+		no += 1
+		for i := 0; i < nextFieldType.NumField(); i++ { // 此时必不是指针
+			field := nextFieldType.Field(i)
+			extractField(field, meta, no) // 递归
 		}
 	}
 }
 
 // Reflect 反射建立任意类型的元信息
 func (m *MetaClass) Reflect(model SchemaIface) *MetaData {
-	if nm, ok := model.(*Field); ok {
+	if nm, ok := model.(*Field); ok { // 接口处定义了基本数据类型, 或List
 		if GetMetaData(nm._pkg) != nil {
 			return nm.MetaData()
 		}
 	}
 
-	at := reflect.TypeOf(model)
-	if at.Kind() == reflect.Pointer { // 全部为指针类型
-		at = at.Elem()
+	rt := reflect.TypeOf(model)
+	if rt.Kind() == reflect.Pointer { // 由于接口定义，此处全部为结构体指针
+		rt = rt.Elem()
 	}
 
 	meta := &MetaData{
-		names:       []string{at.Name(), at.String()}, // 获取包名
+		names:       []string{rt.Name(), rt.String()}, // 获取包名
 		fields:      make([]*MetaField, 0),
 		innerFields: make([]*MetaField, 0),
 	}
 
-	//m.reflectModel(at, meta, 0)
-
-	for i := 0; i < at.NumField(); i++ { // 此时rtype必须不是指针
-		field := at.Field(i)
-
-		if field.Anonymous && (field.Name == "BaseModel" || field.Name == "Field") { // 过滤模型基类
-			continue
-		}
-		if strings.HasPrefix(field.Name, "_") { // 过滤约定的匿名字段
-			continue
-		}
-
-		// ---------------------------------- 获取字段信息 ----------------------------------
-
-		fieldMeta := m.structFieldToMetaField(field)
-		meta.fields = append(meta.fields, fieldMeta)
-
-		switch fieldMeta.OType {
-		case ArrayType:
-			fieldMeta.ItemRef = field.Name
-			m.reflectModel(field.Type.Elem(), meta, 1)
-
-		case ObjectType:
-			m.reflectModel(field.Type, meta, 1)
-
-		default:
-			continue // 获取下一个字段信息
-		}
+	for i := 0; i < rt.NumField(); i++ { // 此时必不是指针
+		field := rt.Field(i)
+		extractField(field, meta, 0) // 0 根起点
 	}
 
 	return meta
