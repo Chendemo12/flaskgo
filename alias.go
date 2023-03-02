@@ -25,12 +25,15 @@ type BaseModelIface = godantic.Iface
 
 //goland:noinspection GoUnusedGlobalVariable
 var ( // types
-	String = godantic.String
+	S      = godantic.String
 	Str    = godantic.String
+	String = godantic.String
 
+	B       = godantic.Bool
 	Bool    = godantic.Bool
 	Boolean = godantic.Bool
 
+	I      = godantic.Int
 	Int    = godantic.Int
 	Byte   = godantic.Uint8
 	Int8   = godantic.Int8
@@ -41,18 +44,18 @@ var ( // types
 	Uint16 = godantic.Uint16
 	Uint32 = godantic.Uint32
 	Uint64 = godantic.Uint64
-	// Float32 = openapi.Float32
-	// Float64 = openapi.Float64
 
-	// Mapping = openapi.Mapping
+	Float   = godantic.Float
+	Float32 = godantic.Float32
+	Float64 = godantic.Float64
 
-	// Float   = Float64
-	// Array   = openapi.List
-	// List    = openapi.List
-	// Ints    = &openapi.RouteModel{Model: Int32, Struct: Int32, RetArray: true}
-	// Bytes   = &openapi.RouteModel{Model: Uint8, Struct: Uint8, RetArray: true}
-	// Strings = &openapi.RouteModel{Model: String, Struct: String, RetArray: true}
-	// Floats  = &openapi.RouteModel{Model: Float64, Struct: Float64, RetArray: true}
+	L       = godantic.List
+	List    = godantic.List
+	Array   = godantic.List
+	Ints    = godantic.List(Int)
+	Bytes   = godantic.List(Byte)
+	Strings = godantic.List(S)
+	Floats  = godantic.List(Float)
 )
 
 //goland:noinspection GoUnusedGlobalVariable

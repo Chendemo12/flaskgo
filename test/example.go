@@ -46,6 +46,7 @@ type PositionGeo struct {
 
 // ReturnLinkInfo 反向链路参数，仅当网管代理配置的参数与此匹配时才转发小站消息到NCC
 type ReturnLinkInfo struct {
+	flaskgo.BaseModel
 	ModType     string            `json:"mod_type"`
 	FecRate     string            `json:"fec_rate"`
 	ForwardLink []ForwardLinkInfo `json:"forward_link" description:"前向链路"`
@@ -67,8 +68,10 @@ func (m ForwardLinkInfo) SchemaDesc() string { return "前向链路参数" }
 
 type SimpleForm struct {
 	flaskgo.BaseModel
-	Name string `json:"name" description:"姓名" validate:"required"`
-	Age  int    `json:"age" description:"年龄" default:"23" gte:"50" validate:"required"`
+	Name     string `json:"name" description:"姓名" validate:"required"`
+	Age      int    `json:"age" description:"年龄" default:"23" gte:"50" validate:"required"`
+	Content  any    `json:"content" description:"任意内容"`
+	Contents []any  `json:"contents" description:"任意一些内容"`
 }
 
 func (s *SimpleForm) SchemaDesc() string { return "简单的表单" }
@@ -85,9 +88,9 @@ type Action struct {
 
 type ExampleForm struct {
 	flaskgo.BaseModel
-	Name    string   `json:"name"`
-	Action  *Action  `json:"action"`
-	Actions []Action `json:"actions"`
+	Name    string     `json:"name"`
+	Action  *Action    `json:"action"`
+	Actions [][]Action `json:"actions"`
 }
 
 func makeTunnelWork(s *flaskgo.Context) *flaskgo.Response {
@@ -131,20 +134,20 @@ func makeRouter() *flaskgo.Router {
 			getSimpleFrom,
 		)
 
-		//router.GET(
-		//	"/form/:name", ExampleForm{}, "获得一个随机表单",
-		//	func(s *flaskgo.Context) any {
-		//		return ExampleForm{name: s.PathFields["name"]}
-		//	})
-		//
-		//router.POST("/tunnel/:no", TunnelWorkParams{}, flaskgo.Int32, "设置通道工作参数", makeTunnelWork).
-		//	SetDescription("设置通道的工作参数，表单内部的`tunnel_no`必须与路径参数保持一致")
-		//
-		//router.POST(
-		//	"/ncc/return_links",
-		//	flaskgo.List(ReturnLinkInfo{}), flaskgo.List(ReturnLinkInfo{}), "设置NCC反向链路参数",
-		//	setNccReturnLinks,
-		//)
+		router.GET(
+			"/form/:name", &ExampleForm{}, "获得一个随机表单",
+			func(s *flaskgo.Context) *flaskgo.Response {
+				return s.OKResponse(&ExampleForm{Name: s.PathFields["name"]})
+			})
+
+		router.POST("/tunnel/:no", &TunnelWorkParams{}, flaskgo.Int32, "设置通道工作参数", makeTunnelWork).
+			SetDescription("设置通道的工作参数，表单内部的`tunnel_no`必须与路径参数保持一致")
+
+		router.POST(
+			"/ncc/return_links",
+			flaskgo.L(&ReturnLinkInfo{}), flaskgo.L(&ReturnLinkInfo{}), "设置NCC反向链路参数",
+			setNccReturnLinks,
+		)
 	}
 	return router
 }
@@ -158,7 +161,7 @@ func (c *Clock) String() string          { return "Clock" }
 func (c *Clock) Interval() time.Duration { return time.Second * 5 }
 
 func (c *Clock) Do(ctx context.Context) error {
-	fmt.Println(time.Now().String())
+	fmt.Println("current second:", time.Now().Second())
 	return nil
 }
 

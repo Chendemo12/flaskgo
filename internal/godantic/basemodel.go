@@ -13,15 +13,13 @@ type dict map[string]any
 // Field 基本数据模型, 此模型不可再分, 同时也是 BaseModel 的字段类型
 // 但此类型不再递归记录,仅记录一个关联模型为基本
 type Field struct {
-	Title     string            `json:"title" description:"字段名称"`
-	Index     int               `json:"index" description:"当前字段所处的序号"`
-	Default   any               `json:"default" description:"默认值"` // 暂时仅限 swagger 使用，后期也应在字段校验时使用
-	Exported  bool              `json:"exported" description:"是否是导出字段"`
-	Anonymous bool              `json:"anonymous" description:"是否是嵌入字段"`
-	Tag       reflect.StructTag `json:"tag" description:"字段标签"`
-	ItemRef   string            `description:"子元素类型, 仅Type=array/object时有效"`
-	RType     reflect.Type      `description:"反射字段类型"`
-	_pkg      string
+	_pkg        string            `description:"包名.结构体名"`
+	Title       string            `json:"title" description:"字段名称"`
+	Tag         reflect.StructTag `json:"tag" description:"字段标签"`
+	Description string            `json:"description,omitempty" description:"说明"`
+	Default     string            `json:"default" description:"默认值"` // 暂时仅限 swagger 使用，后期也应在字段校验时使用
+	ItemRef     string            `description:"子元素类型, 仅Type=array/object时有效"`
+	OType       OpenApiDataType   `json:"otype,omitempty" description:"openaapi 数据类型"`
 }
 
 // Schema 生成字段的详细描述信息
@@ -61,17 +59,15 @@ type Field struct {
 //	}
 func (f *Field) Schema() (m map[string]any) {
 	// 最基础的属性，必须
-	tp := reflectKindToOType(f.RType.Kind())
 	m = dict{
 		"title":       f.Title,
-		"type":        tp,
+		"type":        f.OType,
 		"required":    f.IsRequired(),
 		"description": f.SchemaDesc(),
 	}
 	// 生成默认值
-	if v := GetDefaultV(f.Tag, tp); v != nil {
-		f.Default = v
-		m["default"] = v
+	if f.Default != "" {
+		m["default"] = f.Default
 	}
 	// 生成字段的枚举值
 	if es := QueryFieldTag(f.Tag, "oneof", ""); es != "" {
@@ -79,7 +75,7 @@ func (f *Field) Schema() (m map[string]any) {
 	}
 
 	// 为不同的字段类型生成相应的描述
-	switch tp {
+	switch f.OType {
 	case IntegerType, NumberType: // 生成数字类型的最大最小值
 		if lt := QueryFieldTag(f.Tag, "lt", ""); lt != "" {
 			m["maximum"], _ = strconv.Atoi(lt)
@@ -144,10 +140,10 @@ func (f *Field) Schema() (m map[string]any) {
 func (f *Field) SchemaName(exclude ...bool) string { return QueryJsonName(f.Tag, f.Title) }
 
 // SchemaDesc 字段注释说明
-func (f *Field) SchemaDesc() string { return QueryFieldTag(f.Tag, "description", f.Title) }
+func (f *Field) SchemaDesc() string { return f.Description }
 
 // SchemaType 模型类型
-func (f *Field) SchemaType() OpenApiDataType { return reflectKindToOType(f.RType.Kind()) }
+func (f *Field) SchemaType() OpenApiDataType { return f.OType }
 
 // SchemaJson swagger文档字符串格式
 func (f *Field) SchemaJson() string {
@@ -160,10 +156,10 @@ func (f *Field) SchemaJson() string {
 }
 
 // IsRequired 字段是否必须
-func (f *Field) IsRequired() bool { return f.Exported && IsFieldRequired(f.Tag) }
+func (f *Field) IsRequired() bool { return IsFieldRequired(f.Tag) }
 
 // IsArray 字段是否是数组类型
-func (f *Field) IsArray() bool { return reflectKindToOType(f.RType.Kind()) == ArrayType }
+func (f *Field) IsArray() bool { return f.OType == ArrayType }
 
 // InnerSchema 内部字段模型文档, 全名:文档
 func (f *Field) InnerSchema() (m map[string]map[string]any) {
@@ -179,7 +175,7 @@ func (f *Field) SetId(id string) { f._pkg = id }
 // 在 OpenApi 文档模型中,此模型的类型始终为 "object";
 // 对于 BaseModel 其字段仍然可能会 BaseModel
 type BaseModel struct {
-	_pkg string
+	_pkg string `description:"包名.结构体名"`
 }
 
 // Schema 输出为OpenAPI文档模型,字典格式
@@ -208,7 +204,8 @@ type BaseModel struct {
 //		},
 //	},
 func (b *BaseModel) Schema() (m map[string]any) {
-	m = dict{"title": b.SchemaName(), "type": b.SchemaType(), "description": b.SchemaDesc()}
+	// 模型标题排除包名
+	m = dict{"title": b.SchemaName(true), "type": b.SchemaType(), "description": b.SchemaDesc()}
 
 	meta := GetMetaData(b._pkg)
 	required := make([]string, 0, len(meta.fields))
@@ -261,7 +258,10 @@ func (b *BaseModel) SchemaJson() string {
 func (b *BaseModel) InnerSchema() (m map[string]map[string]any) {
 	meta := GetMetaData(b._pkg)
 	for i := 0; i < len(meta.innerFields); i++ {
-		m[meta.innerFields[i].SchemaName()] = meta.innerFields[i].Schema()
+		// TODO: error
+		if meta.innerFields[i].Exported && !strings.HasPrefix(meta.innerFields[i].SchemaName(), "_") {
+			m[meta.innerFields[i].SchemaName()] = meta.innerFields[i].Schema()
+		}
 	}
 
 	return

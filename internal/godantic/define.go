@@ -1,240 +1,225 @@
 package godantic
 
-var (
-	String  = &str{}
-	Bool    = &boolean{}
-	Int     = &integer{}
-	Int8    = &integer{}
-	Int16   = &integer{}
-	Int32   = &integer{}
-	Int64   = &integer{}
-	Uint8   = &integer{}
-	Uint16  = &integer{}
-	Uint32  = &integer{}
-	Uint64  = &integer{}
-	Float32 = &float{}
-	Float64 = &float{}
-
-	// Mapping = openapi.Mapping
-	//
-
-	// Array   = openapi.List
-	// List    = openapi.List
-	// Ints    = &openapi.RouteModel{Model: Int32, Struct: Int32, RetArray: true}
-	// Bytes   = &openapi.RouteModel{Model: Uint8, Struct: Uint8, RetArray: true}
-	// Strings = &openapi.RouteModel{Model: String, Struct: String, RetArray: true}
-	// Floats  = &openapi.RouteModel{Model: Float64, Struct: Float64, RetArray: true}
-)
-
 func init() {
 	// 初始化基本类型
 	String.SetId("godantic.str")
+	String.Description = QueryFieldTag(String.Tag, "description", String.SchemaName())
+	String.Default = QueryFieldTag(String.Tag, "default", "")
 	SetMetaData(newEmptyMeta("str"))
+
 	Bool.SetId("godantic.bool")
+	Bool.Description = QueryFieldTag(Bool.Tag, "description", Bool.SchemaName())
+	Bool.Default = QueryFieldTag(Bool.Tag, "default", "")
 	SetMetaData(newEmptyMeta("bool"))
+
 	// integer
 	Int.SetId("godantic.int")
+	Int.Description = QueryFieldTag(Int.Tag, "description", Int.SchemaName())
+	Int.Default = QueryFieldTag(Int.Tag, "default", "")
 	SetMetaData(newEmptyMeta("int"))
+
 	Int8.SetId("godantic.int8")
+	Int8.Description = QueryFieldTag(Int8.Tag, "description", Int8.SchemaName())
+	Int8.Default = QueryFieldTag(Int8.Tag, "default", "")
 	SetMetaData(newEmptyMeta("int8"))
+
 	Int16.SetId("godantic.int16")
+	Int16.Description = QueryFieldTag(Int16.Tag, "description", Int16.SchemaName())
+	Int16.Default = QueryFieldTag(Int16.Tag, "default", "")
 	SetMetaData(newEmptyMeta("int16"))
+
 	Int32.SetId("godantic.int32")
+	Int32.Description = QueryFieldTag(Int32.Tag, "description", Int32.SchemaName())
+	Int32.Default = QueryFieldTag(Int32.Tag, "default", "")
 	SetMetaData(newEmptyMeta("int32"))
+
 	Int64.SetId("godantic.int64")
+	Int64.Description = QueryFieldTag(Int64.Tag, "description", Int64.SchemaName())
+	Int64.Default = QueryFieldTag(Int64.Tag, "default", "")
 	SetMetaData(newEmptyMeta("int64"))
 
 	Uint8.SetId("godantic.uint8")
+	Uint8.Description = QueryFieldTag(Uint8.Tag, "description", Uint8.SchemaName())
+	Uint8.Default = QueryFieldTag(Uint8.Tag, "default", "")
 	SetMetaData(newEmptyMeta("uint8"))
+
 	Uint16.SetId("godantic.uint16")
+	Uint16.Description = QueryFieldTag(Uint16.Tag, "description", Uint16.SchemaName())
+	Uint16.Default = QueryFieldTag(Uint16.Tag, "default", "")
 	SetMetaData(newEmptyMeta("uint16"))
+
 	Uint32.SetId("godantic.uint32")
+	Uint32.Description = QueryFieldTag(Uint32.Tag, "description", Uint32.SchemaName())
+	Uint32.Default = QueryFieldTag(Uint32.Tag, "default", "")
 	SetMetaData(newEmptyMeta("uint32"))
+
 	Uint64.SetId("godantic.uint64")
+	Uint64.Description = QueryFieldTag(Uint64.Tag, "description", Uint64.SchemaName())
+	Uint64.Default = QueryFieldTag(Uint64.Tag, "default", "")
 	SetMetaData(newEmptyMeta("uint64"))
 
+	Float.SetId("godantic.float")
+	Float.Description = QueryFieldTag(Float.Tag, "description", Float.SchemaName())
+	Float.Default = QueryFieldTag(Float.Tag, "default", "")
+	SetMetaData(newEmptyMeta("float64"))
+
 	Float32.SetId("godantic.float32")
+	Float32.Description = QueryFieldTag(Float32.Tag, "description", Float32.SchemaName())
+	Float32.Default = QueryFieldTag(Float32.Tag, "default", "")
 	SetMetaData(newEmptyMeta("float32"))
+
 	Float64.SetId("godantic.float64")
+	Float64.Description = QueryFieldTag(Float64.Tag, "description", Float64.SchemaName())
+	Float64.Default = QueryFieldTag(Float64.Tag, "default", "")
 	SetMetaData(newEmptyMeta("float64"))
 }
 
 func newEmptyMeta(name string) *MetaData {
 	return &MetaData{
 		names:       []string{name, "godantic." + name},
-		fields:      make([]*Field, 0),
-		innerFields: make([]*Field, 0),
+		fields:      make([]*MetaField, 0),
+		innerFields: make([]*MetaField, 0),
 	}
 }
 
-type str struct {
-	BaseModel
-}
+var (
+	// ------------------------------------- int ---------------------------------------
 
-// SchemaName 获取结构体的名称,默认包含包名
-func (d *str) SchemaName(exclude ...bool) string { return string(StringType) }
-func (d *str) SchemaDesc() string                { return string(StringType) }
-func (d *str) SchemaType() OpenApiDataType       { return StringType }
-func (d *str) IsRequired() bool                  { return true }
-func (d *str) Schema() (m map[string]any) {
-	m = make(map[string]any)
-	m["title"] = StringType
-	return
-}
+	Int8 = &Field{
+		_pkg:        "godantic.int8",
+		Title:       "Int8",
+		Tag:         `json:"int8" gte:"-128" lte:"127" description:"int8" default:"0"`,
+		OType:       IntegerType,
+		Description: "",
+		Default:     "",
+	}
+	Int16 = &Field{
+		_pkg:        "godantic.int16",
+		Title:       "Int16",
+		Tag:         `json:"int16" gte:"-32768" lte:"32767" description:"int16" default:"0"`,
+		OType:       IntegerType,
+		Description: "",
+		Default:     "",
+	}
+	Int32 = &Field{
+		_pkg:        "godantic.int32",
+		Title:       "Int32",
+		Tag:         `json:"int32" gte:"-2147483648" lte:"2147483647" description:"int32" default:"0"`,
+		OType:       IntegerType,
+		Description: "",
+		Default:     "",
+	}
+	Int64 = &Field{
+		_pkg:        "godantic.int64",
+		Title:       "Int64",
+		Tag:         `json:"int64" gte:"-9223372036854775808" lte:"9223372036854775807" description:"int64" default:"0"`,
+		OType:       IntegerType,
+		Description: "",
+		Default:     "",
+	}
+	Int = &Field{
+		_pkg:        "godantic.int",
+		Title:       "Int",
+		Tag:         `json:"int" gte:"-9223372036854775808" lte:"9223372036854775807" description:"int" default:"0"`,
+		OType:       IntegerType,
+		Description: "",
+		Default:     "",
+	}
 
-type boolean struct {
-	BaseModel
-}
+	// ------------------------------------- uint ---------------------------------------
 
-func (d *boolean) SchemaName(exclude ...bool) string { return string(BoolType) }
-func (d *boolean) SchemaDesc() string                { return string(BoolType) }
-func (d *boolean) SchemaType() OpenApiDataType       { return BoolType }
-func (d *boolean) IsRequired() bool                  { return true }
-func (d *boolean) Schema() (m map[string]any) {
-	m = make(map[string]any)
-	m["title"] = BoolType
-	return
-}
+	Uint8 = &Field{
+		_pkg:        "godantic.uint8",
+		Title:       "Uint8",
+		Tag:         `json:"uint8" gte:"0" lte:"255" description:"uint8"`,
+		OType:       IntegerType,
+		Description: "",
+		Default:     "",
+	}
+	Uint16 = &Field{
+		_pkg:        "godantic.uint16",
+		Title:       "Uint16",
+		Tag:         `json:"uint16" gte:"0" lte:"65535" description:"uint16" default:"0"`,
+		OType:       IntegerType,
+		Description: "",
+		Default:     "",
+	}
+	Uint32 = &Field{
+		_pkg:        "godantic.uint32",
+		Title:       "Uint32",
+		Tag:         `json:"uint32" gte:"0" lte:"4294967295" description:"uint32" default:"0"`,
+		OType:       IntegerType,
+		Description: "",
+		Default:     "",
+	}
+	Uint64 = &Field{
+		_pkg:        "godantic.uint64",
+		Title:       "Uint64",
+		Tag:         `json:"uint64" gte:"0" lte:"18446744073709551615" description:"uint64" default:"0"`,
+		OType:       IntegerType,
+		Description: "",
+		Default:     "",
+	}
 
-type integer struct {
-	BaseModel
-}
+	// ------------------------------------- Float ---------------------------------------
 
-func (d *integer) SchemaName(exclude ...bool) string { return string(IntegerType) }
-func (d *integer) SchemaDesc() string                { return string(IntegerType) }
-func (d *integer) SchemaType() OpenApiDataType       { return IntegerType }
-func (d *integer) IsRequired() bool                  { return true }
-func (d *integer) Schema() (m map[string]any) {
-	m = make(map[string]any)
-	m["title"] = IntegerType
-	return
-}
+	Float32 = &Field{
+		_pkg:        "godantic.float32",
+		Title:       "Float32",
+		Tag:         `json:"float32" description:"float32" default:"0.0"`,
+		OType:       NumberType,
+		Description: "",
+		Default:     "",
+	}
+	Float64 = &Field{
+		_pkg:        "godantic.float64",
+		Title:       "Float64",
+		Tag:         `json:"float64" description:"float64" default:"0.0"`,
+		OType:       NumberType,
+		Description: "",
+		Default:     "",
+	}
+	Float = &Field{
+		_pkg:        "godantic.float",
+		Title:       "Float",
+		Tag:         `json:"float" description:"float" default:"0.0"`,
+		OType:       NumberType,
+		Description: "",
+		Default:     "",
+	}
 
-type float struct {
-	BaseModel
-}
+	// ------------------------------------- other ---------------------------------------
 
-func (d *float) SchemaName(exclude ...bool) string { return string(NumberType) }
-func (d *float) SchemaDesc() string                { return string(NumberType) }
-func (d *float) SchemaType() OpenApiDataType       { return NumberType }
-func (d *float) IsRequired() bool                  { return true }
-func (d *float) Schema() (m map[string]any) {
-	m = make(map[string]any)
-	m["title"] = NumberType
-	return
-}
+	String = &Field{
+		_pkg:        "godantic.string",
+		Title:       "String",
+		Tag:         `json:"string" min:"0" max:"255" description:"string" default:""`,
+		OType:       StringType,
+		Description: "",
+		Default:     "",
+	}
+	Bool = &Field{
+		_pkg:        "godantic.bool",
+		Title:       "Bool",
+		Tag:         `json:"boolean" oneof:"true false" description:"boolean" default:"false"`,
+		OType:       BoolType,
+		Description: "",
+		Default:     "",
+	}
+)
 
 func List(model SchemaIface) *Field {
+	meta := GetMetaDataFactory().Reflect(model)
+	SetMetaData(meta)
+	model.SetId(meta.Id())
+
 	return &Field{
-		Title:     model.SchemaName(),
-		Index:     0,
-		Default:   nil,
-		Exported:  true,
-		Anonymous: false,
-		Tag:       "",
-		ItemRef:   model.SchemaName(),
-		RType:     nil,
-		_pkg:      "",
+		_pkg:        meta.Id(),
+		Title:       meta.String(),
+		Tag:         "",
+		Description: model.SchemaDesc(),
+		Default:     "",
+		ItemRef:     model.SchemaName(),
+		OType:       ArrayType,
 	}
 }
-
-//
-//var (
-//	// ------------------------------------- int ---------------------------------------
-//
-//	Int8 = RModelField{
-//		names:        "Int8",
-//		Tag:         `json:"int8" gte:"-128" lte:"127" description:"int8" default:"0"`,
-//		RType:        godantic.IntegerType,
-//		ReflectKind: reflect.Int8,
-//	}
-//	Int16 = RModelField{
-//		names:        "Int16",
-//		Tag:         `json:"int16" gte:"-32768" lte:"32767" description:"int16" default:"0"`,
-//		RType:        godantic.IntegerType,
-//		ReflectKind: reflect.Int16,
-//	}
-//	Int32 = RModelField{
-//		names:        "Int32",
-//		Tag:         `json:"int32" gte:"-2147483648" lte:"2147483647" description:"int32" default:"0"`,
-//		RType:        godantic.IntegerType,
-//		ReflectKind: reflect.Int32,
-//	}
-//	Int64 = RModelField{
-//		names:        "Int64",
-//		Tag:         `json:"int64" gte:"-9223372036854775808" lte:"9223372036854775807" description:"int64" default:"0"`,
-//		RType:        godantic.IntegerType,
-//		ReflectKind: reflect.Int64,
-//	}
-//
-//	// ------------------------------------- uint ---------------------------------------
-//
-//	Uint8 = RModelField{
-//		names:        "Uint8",
-//		Tag:         `json:"uint8" gte:"0" lte:"255" description:"uint8"`,
-//		RType:        godantic.IntegerType,
-//		ReflectKind: reflect.Uint8,
-//	}
-//	Uint16 = RModelField{
-//		names:        "Uint16",
-//		Tag:         `json:"uint16" gte:"0" lte:"65535" description:"uint16" default:"0"`,
-//		RType:        godantic.IntegerType,
-//		ReflectKind: reflect.Uint16,
-//	}
-//	Uint32 = RModelField{
-//		names:        "Uint32",
-//		Tag:         `json:"uint32" gte:"0" lte:"4294967295" description:"uint32" default:"0"`,
-//		RType:        godantic.IntegerType,
-//		ReflectKind: reflect.Uint32,
-//	}
-//	Uint64 = RModelField{
-//		names:        "Uint64",
-//		Tag:         `json:"uint64" gte:"0" lte:"18446744073709551615" description:"uint64" default:"0"`,
-//		RType:        godantic.IntegerType,
-//		ReflectKind: reflect.Uint64,
-//	}
-//
-//	// ------------------------------------- Float ---------------------------------------
-//
-//	Float32 = RModelField{
-//		names:        "Float32",
-//		Tag:         `json:"float32" description:"float32" default:"0.0"`,
-//		RType:        godantic.NumberType,
-//		ReflectKind: reflect.Float32,
-//	}
-//	Float64 = RModelField{
-//		names:        "Float64",
-//		Tag:         `json:"float64" description:"float64" default:"0.0"`,
-//		RType:        godantic.NumberType,
-//		ReflectKind: reflect.Float64,
-//	}
-//
-//	// ------------------------------------- other ---------------------------------------
-//
-//	String = RModelField{
-//		names:        "String",
-//		Tag:         `json:"string" min:"0" max:"255" description:"string" default:""`,
-//		RType:        "string",
-//		ReflectKind: reflect.String,
-//	}
-//	Boolean = RModelField{
-//		names:        godantic.BoolType,
-//		Tag:         `json:"boolean" oneof:"true false" description:"boolean" default:"false"`,
-//		RType:        godantic.BoolType,
-//		ReflectKind: reflect.Bool,
-//	}
-//	Mapping = RModelField{
-//		names:        "mapping",
-//		Tag:         `json:"mapping"`,
-//		RType:        godantic.ObjectType,
-//		ReflectKind: reflect.Map,
-//	}
-//)
-//
-//type BaseModelIface interface {
-//	SchemaDesc() string // 模型描述
-//}
-//
-//type BaseModel struct{}
-//
-//func (b BaseModel) SchemaDesc() string { return "" }

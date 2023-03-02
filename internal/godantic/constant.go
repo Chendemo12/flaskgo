@@ -11,7 +11,7 @@ const (
 	IntegerType OpenApiDataType = "integer"
 	NumberType  OpenApiDataType = "number"
 	StringType  OpenApiDataType = "string"
-	ArrayType   OpenApiDataType = "array"
-	ObjectType  OpenApiDataType = "object"
 	BoolType    OpenApiDataType = "boolean"
+	ObjectType  OpenApiDataType = "object"
+	ArrayType   OpenApiDataType = "array"
 )
