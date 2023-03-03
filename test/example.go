@@ -140,12 +140,12 @@ func makeRouter() *flaskgo.Router {
 				return s.OKResponse(&ExampleForm{Name: s.PathFields["name"]})
 			})
 
-		router.POST("/tunnel/:no", &TunnelWorkParams{}, flaskgo.Int32, "设置通道工作参数", makeTunnelWork).
+		router.POST("/tunnel/:no", &TunnelWorkParams{}, flaskgo.Int, "设置通道工作参数", makeTunnelWork).
 			SetDescription("设置通道的工作参数，表单内部的`tunnel_no`必须与路径参数保持一致")
 
 		router.POST(
 			"/ncc/return_links",
-			flaskgo.L(&ReturnLinkInfo{}), flaskgo.L(&ReturnLinkInfo{}), "设置NCC反向链路参数",
+			flaskgo.L(&ReturnLinkInfo{}), &ReturnLinkInfo{}, "设置NCC反向链路参数",
 			setNccReturnLinks,
 		)
 	}

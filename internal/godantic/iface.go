@@ -13,8 +13,8 @@ type SchemaIface interface {
 	SchemaJson() string
 	// IsRequired 字段是否必须
 	IsRequired() bool
-	// MetaData 获取反射后的字段元信息
-	MetaData() *MetaData
+	// Metadata 获取反射后的字段元信息
+	Metadata() *Metadata
 	// SetId 设置结构体的唯一标识
 	SetId(id string)
 }

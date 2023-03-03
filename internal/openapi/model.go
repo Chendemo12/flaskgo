@@ -62,7 +62,7 @@ func (c *Components) MarshalJSON() ([]byte, error) {
 	for _, v := range c.Scheme {
 		m[v.Name] = v.Model.Schema()
 		// 从 BaseModel 生成模型，处理嵌入类型
-		for _, innerV := range v.Model.MetaData().InnerFields() {
+		for _, innerV := range v.Model.Metadata().InnerFields() {
 			m[innerV.SchemaName()] = innerV.Schema()
 		}
 	}

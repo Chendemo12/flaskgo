@@ -60,6 +60,7 @@ type Field struct {
 func (f *Field) Schema() (m map[string]any) {
 	// 最基础的属性，必须
 	m = dict{
+		"name":        f.SchemaName(),
 		"title":       f.Title,
 		"type":        f.OType,
 		"required":    f.IsRequired(),
@@ -167,7 +168,7 @@ func (f *Field) InnerSchema() (m map[string]map[string]any) {
 	return
 }
 
-func (f *Field) MetaData() *MetaData { return GetMetaData(f._pkg) }
+func (f *Field) Metadata() *Metadata { return GetMetadata(f._pkg) }
 
 func (f *Field) SetId(id string) { f._pkg = id }
 
@@ -205,20 +206,20 @@ type BaseModel struct {
 //	},
 func (b *BaseModel) Schema() (m map[string]any) {
 	// 模型标题排除包名
-	m = dict{"title": b.SchemaName(true), "type": b.SchemaType(), "description": b.SchemaDesc()}
+	m = dict{"title": b.SchemaName(), "type": b.SchemaType(), "description": b.SchemaDesc()}
 
-	meta := GetMetaData(b._pkg)
+	meta := GetMetadata(b._pkg)
 	required := make([]string, 0, len(meta.fields))
 	properties := make(map[string]any, len(meta.fields))
 
-	for i := 0; i < len(meta.fields); i++ {
-		if !meta.fields[i].Exported || meta.fields[i].Anonymous { // 非导出字段
+	for _, field := range meta.fields {
+		if !field.Exported || field.Anonymous { // 非导出字段
 			continue
 		}
 
-		properties[meta.fields[i].SchemaName()] = meta.fields[i].Schema()
-		if meta.fields[i].IsRequired() {
-			required = append(required, meta.fields[i].SchemaName())
+		properties[field.SchemaName()] = field.Schema()
+		if field.IsRequired() {
+			required = append(required, field.SchemaName())
 		}
 	}
 
@@ -230,7 +231,7 @@ func (b *BaseModel) Schema() (m map[string]any) {
 // SchemaName 获取结构体的名称,默认包含包名
 // @param  exclude  []bool  是否排除包名LL
 func (b *BaseModel) SchemaName(exclude ...bool) string {
-	meta := GetMetaData(b._pkg)
+	meta := GetMetadata(b._pkg)
 	if len(exclude) > 0 { // 排除包名
 		return meta.names[0]
 	} else {
@@ -256,7 +257,7 @@ func (b *BaseModel) SchemaJson() string {
 
 // InnerSchema 内部字段模型文档
 func (b *BaseModel) InnerSchema() (m map[string]map[string]any) {
-	meta := GetMetaData(b._pkg)
+	meta := GetMetadata(b._pkg)
 	for i := 0; i < len(meta.innerFields); i++ {
 		// TODO: error
 		if meta.innerFields[i].Exported && !strings.HasPrefix(meta.innerFields[i].SchemaName(), "_") {
@@ -285,7 +286,7 @@ func (b *BaseModel) Dict(exclude []string, include map[string]any) (m map[string
 
 	// 实时反射取值
 	v := reflect.Indirect(reflect.ValueOf(b))
-	meta := GetMetaData(b._pkg)
+	meta := GetMetadata(b._pkg)
 
 	for i := 0; i < len(meta.Fields()); i++ {
 		if !meta.fields[i].Exported || meta.fields[i].Anonymous { // 非导出字段
@@ -375,8 +376,8 @@ func (b *BaseModel) Copy() any {
 	return nil
 }
 
-// MetaData 获取反射后的字段元信息, 此字段应慎重使用
-func (b *BaseModel) MetaData() *MetaData { return GetMetaData(b._pkg) }
+// Metadata 获取反射后的字段元信息, 此字段应慎重使用
+func (b *BaseModel) Metadata() *Metadata { return GetMetadata(b._pkg) }
 
 // SetId 设置结构体的唯一标识
 func (b *BaseModel) SetId(id string) { b._pkg = id }
