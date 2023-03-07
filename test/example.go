@@ -81,8 +81,8 @@ type Step struct {
 }
 
 type Action struct {
-	OneStep  Step     `json:"oneStep"`
-	TwoSteps []Step   `json:"twoSteps"`
+	OneStep  Step     `json:"one_step"`
+	TwoSteps []Step   `json:"two_steps"`
 	Next     []string `json:"next"`
 }
 

@@ -137,11 +137,13 @@ func (f *Router) method(
 ) *Route {
 	if requestModel != nil {
 		meta := godantic.GetMetadataFactory().Reflect(requestModel)
+		meta.SetDesc(requestModel.SchemaDesc())
 		godantic.SaveMetadata(meta)
 		requestModel.SetId(meta.Id())
 	}
 	if responseModel != nil {
 		meta := godantic.GetMetadataFactory().Reflect(responseModel)
+		meta.SetDesc(responseModel.SchemaDesc())
 		responseModel.SetId(meta.Id())
 		godantic.SaveMetadata(meta)
 	}

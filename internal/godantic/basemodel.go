@@ -110,7 +110,7 @@ func (f *Field) Schema() (m map[string]any) {
 	case ArrayType:
 		// 为数组类型生成子类型描述
 		if f.ItemRef != "" {
-			if strings.HasPrefix(f.ItemRef, RefPrefix) { // 数组子元素为关联类型
+			if !strings.HasPrefix(f.ItemRef, RefPrefix) { // 数组子元素为关联类型
 				m["items"] = map[string]string{"$ref": RefPrefix + f.ItemRef}
 			} else { // 子元素为基本数据类型
 				m["items"] = map[string]string{"type": f.ItemRef}
@@ -206,7 +206,11 @@ type BaseModel struct {
 //	},
 func (b *BaseModel) Schema() (m map[string]any) {
 	// 模型标题排除包名
-	m = dict{"title": b.SchemaName(), "type": b.SchemaType(), "description": b.SchemaDesc()}
+	m = dict{
+		"title":       b.SchemaName(true),
+		"type":        b.SchemaType(),
+		"description": b.SchemaDesc(),
+	}
 
 	meta := GetMetadata(b._pkg)
 	required := make([]string, 0, len(meta.fields))
@@ -240,7 +244,7 @@ func (b *BaseModel) SchemaName(exclude ...bool) string {
 }
 
 // SchemaDesc 结构体文档注释
-func (b *BaseModel) SchemaDesc() string { return "BaseModel" }
+func (b *BaseModel) SchemaDesc() string { return "" }
 
 // SchemaType 模型类型
 func (b *BaseModel) SchemaType() OpenApiDataType { return ObjectType }

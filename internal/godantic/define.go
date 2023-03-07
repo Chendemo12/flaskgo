@@ -78,6 +78,7 @@ func newEmptyMeta(name string) *Metadata {
 	return &Metadata{
 		names:       []string{name, "godantic." + name},
 		fields:      make([]*MetaField, 0),
+		description: name,
 		innerFields: make([]*MetaField, 0),
 	}
 }

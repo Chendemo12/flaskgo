@@ -60,10 +60,12 @@ type Components struct {
 func (c *Components) MarshalJSON() ([]byte, error) {
 	m := make(map[string]map[string]any, 0)
 	for _, v := range c.Scheme {
-		m[v.Name] = v.Model.Schema()
+		m[v.Name] = v.Model.Schema() // 记录根模型
 		// 从 BaseModel 生成模型，处理嵌入类型
-		for _, innerV := range v.Model.Metadata().InnerFields() {
-			m[innerV.SchemaName()] = innerV.Schema()
+		for _, innerF := range v.Model.Metadata().InnerFields() {
+			if innerM := innerF.InnerModel(); innerM != nil { // 发现子模型
+				m[innerM.SchemaName()] = innerM.Schema()
+			}
 		}
 	}
 
