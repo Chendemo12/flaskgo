@@ -25,6 +25,7 @@ func StructReflect(rt reflect.Type) *Metadata {
 		names:       []string{rt.Name(), rt.String()}, // 获取包名
 		fields:      make([]*MetaField, 0),
 		innerFields: make([]*MetaField, 0),
+		oType:       ObjectType,
 	}
 
 	ref := ModelReflect{metadata: meta}
@@ -63,10 +64,11 @@ func (m *MetaField) InnerModel() *Metadata {
 }
 
 type Metadata struct {
-	names       []string     `description:"结构体名称,包名.结构体名称"`
-	description string       `description:"模型描述"`
-	fields      []*MetaField `description:"结构体字段"`
-	innerFields []*MetaField `description:"内部字段"`
+	names       []string        `description:"结构体名称,包名.结构体名称"`
+	description string          `description:"模型描述"`
+	fields      []*MetaField    `description:"结构体字段"`
+	innerFields []*MetaField    `description:"内部字段"`
+	oType       OpenApiDataType `description:"openaapi 数据类型"`
 }
 
 // Name 获取结构体名称
@@ -121,7 +123,7 @@ func (m *Metadata) Schema() map[string]any {
 func (m *Metadata) SchemaDesc() string { return m.description }
 
 // SchemaType 模型类型
-func (m *Metadata) SchemaType() OpenApiDataType { return ObjectType }
+func (m *Metadata) SchemaType() OpenApiDataType { return m.oType }
 
 // IsRequired 字段是否必须
 func (m *Metadata) IsRequired() bool { return true }
@@ -166,7 +168,7 @@ func (m *MetaClass) Get(pkg string) *Metadata { return m.Query(pkg) }
 
 func (m *MetaClass) Set(meta *Metadata) { m.Save(meta) }
 
-// Reflect 反射建立任意类型的元信息
+// Reflect 反射建立任意类型的元信息, 根入口
 func (m *MetaClass) Reflect(model SchemaIface) *Metadata {
 	if nm, ok := model.(*Field); ok { // 接口处定义了基本数据类型
 		if meta := GetMetadata(nm._pkg); meta != nil {
@@ -175,8 +177,9 @@ func (m *MetaClass) Reflect(model SchemaIface) *Metadata {
 	}
 	if nm, ok := model.(*MetaField); ok { // 接口处定义了List
 		meta := GetMetadata(nm._pkg)
-		if meta == nil {
+		if meta == nil { // 后期移除
 			meta = StructReflect(nm.RType)
+			meta.oType = nm.OType
 			SaveMetadata(meta)
 		}
 
@@ -265,6 +268,7 @@ func (m *ModelReflect) structFieldToMetaField(field reflect.StructField) *MetaFi
 }
 
 // 处理字段是数组的元素
+//
 //	@param	elemType	reflect.Type	子元素类型
 //	@param	metadata	*Metadata		根模型元信息
 //	@param	metaField	*MetaField		字段元信息
@@ -337,6 +341,7 @@ func (m *ModelReflect) parseFieldWhichIsArray(elemType reflect.Type, fieldMeta *
 }
 
 // 处理字段是结构体的元素
+//
 //	@param	elemType	reflect.Type	子元素类型
 //	@param	metadata	*Metadata		根模型元信息
 //	@param	metaField	*MetaField		字段元信息

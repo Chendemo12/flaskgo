@@ -1,10 +1,13 @@
 package app
 
 import (
+	"github.com/Chendemo12/flaskgo/internal/core"
+	"github.com/Chendemo12/flaskgo/internal/godantic"
 	"github.com/Chendemo12/flaskgo/internal/openapi"
 	"github.com/Chendemo12/functools/logger"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"reflect"
 )
 
 const ( // json序列化错误, 关键信息的序号
@@ -14,21 +17,27 @@ const ( // json序列化错误, 关键信息的序号
 	jsonErrorFormIndex              = 3   // 接收到的数据
 )
 
+var emptyMap = map[string]any{}
+var emptyList = make([]string, 0)
+
 type Dict = map[string]any
 
 type Context struct {
 	PathFields  map[string]string `json:"path_fields,omitempty"`  // 路径参数
 	QueryFields map[string]string `json:"query_fields,omitempty"` // 查询参数
 	RequestBody any               `json:"request_body,omitempty"` // 请求体，初始值为1
-	app         *FlaskGo
-	ec          *fiber.Ctx
+	app         *FlaskGo          `description:"flask-go application"`
+	ec          *fiber.Ctx        `description:"engine context"`
+	route       *Route            `description:"用于请求体和响应提校验"`
 }
 
 // Service 获取 FlaskGo 的 Service 服务依赖信息
+//
 //	@return	Service 服务依赖信息
 func (c *Context) Service() *Service { return c.app.Service() }
 
 // Context 获取web引擎的上下文 Service
+//
 //	@return	*fiber.Ctx fiber.App 的上下文信息
 func (c *Context) Context() *fiber.Ctx { return c.ec }
 
@@ -53,6 +62,7 @@ func (c *Context) Validator() *validator.Validate { return c.app.service.validat
 func (c *Context) Validate(stc any) *Response { return c.app.service.Validate(stc) }
 
 // BodyParser 序列化请求体
+//
 //	@param	c	*fiber.Ctx	fiber上下文
 //	@param	a	any			请求体指针
 //	@return	*Response 错误信息,若为nil 则序列化成功
@@ -76,27 +86,86 @@ func (c *Context) ShouldBindJSON(stc any) *Response {
 
 }
 
+func (c *Context) structResponseValidation(content any) *ValidationError {
+	// 对于 struct 类型，允许缺省返回值以屏蔽返回值校验
+	if core.ResponseValidateDisabled || c.route.ResponseModel == nil {
+		return nil
+	}
+
+	rt := reflect.TypeOf(content)
+	if rt.Kind() == reflect.Ptr {
+		rt = rt.Elem()
+	}
+
+	// 类型校验
+	meta, err := c.route.ResponseModel.Metadata()
+	if err != nil || meta.String() != rt.String() {
+		v := &ValidationError{
+			Ctx:  emptyMap,
+			Msg:  ModelNotMatch,
+			Type: string(godantic.StringType),
+			Loc:  []string{rt.String()},
+		}
+		c.Logger().Error(v.SchemaDesc(), ":", v.String())
+		return v
+	}
+	// 字段类型校验
+
+	return nil
+}
+
 // OKResponse 返回状态码为200的 JSONResponse
+//
 //	@param	content	any	可以json序列化的类型
 //	@return	resp *Response response返回体
-func (c *Context) OKResponse(content any) *Response { return OKResponse(content) }
+func (c *Context) OKResponse(content any) *Response {
+	if err := c.structResponseValidation(content); err != nil {
+		return ValidationErrorResponse(err)
+	}
+	return OKResponse(content)
+}
 
 // JSONResponse 仅支持可以json序列化的响应体
+//
 //	@param	statusCode	int	响应状态码
 //	@param	content		any	可以json序列化的类型
 //	@return	resp *Response response返回体
 func (c *Context) JSONResponse(statusCode int, content any) *Response {
+	if err := c.structResponseValidation(content); err != nil {
+		return ValidationErrorResponse(err)
+	}
 	return JSONResponse(statusCode, content)
 }
 
 // StringResponse 返回值为字符串对象
+//
 //	@param	content	string	字符串文本
 //	@return	resp *Response response返回体
 func (c *Context) StringResponse(content string) *Response {
-	return StringResponse(content)
+	meta, err := c.route.ResponseModel.Metadata()
+	if err != nil {
+		return ValidationErrorResponse(&ValidationError{
+			Ctx:  emptyMap,
+			Msg:  ModelNotDefine,
+			Type: string(godantic.StringType),
+			Loc:  emptyList,
+		})
+	}
+
+	if meta.SchemaType() == godantic.StringType {
+		return StringResponse(content)
+	} else {
+		return ValidationErrorResponse(&ValidationError{
+			Ctx:  emptyMap,
+			Msg:  ModelNotString,
+			Type: string(godantic.StringType),
+			Loc:  emptyList,
+		})
+	}
 }
 
 // StreamResponse 返回值为字节流对象
+//
 //	@param	statusCode	int		响应状态码
 //	@param	content		[]byte	字节流
 //	@return	resp *Response response返回体
@@ -105,6 +174,7 @@ func (c *Context) StreamResponse(statusCode int, content []byte) *Response {
 }
 
 // FileResponse 返回值为文件对象，如：照片视频文件流等, 若文件不存在，则状态码置为404
+//
 //	@param	filepath	string	文件路径
 //	@return	resp *Response response返回体
 func (c *Context) FileResponse(filepath string) *Response {
@@ -112,6 +182,7 @@ func (c *Context) FileResponse(filepath string) *Response {
 }
 
 // ErrorResponse 返回一个服务器错误
+//
 //	@param	content	any	错误消息
 //	@return	resp *Response response返回体
 func (c *Context) ErrorResponse(content any) *Response {
@@ -119,6 +190,7 @@ func (c *Context) ErrorResponse(content any) *Response {
 }
 
 // HTMLResponse 返回一段HTML文本
+//
 //	@param	statusCode	int		响应状态码
 //	@param	content		string	HTML文本字符串
 //	@return	resp *Response response返回体
@@ -127,6 +199,7 @@ func (c *Context) HTMLResponse(statusCode int, context string) *Response {
 }
 
 // AdvancedResponse 高级返回值，允许返回一个函数，以实现任意类型的返回
+//
 //	@param	statusCode	int				响应状态码
 //	@param	content		fiber.Handler	钩子函数
 //	@return	resp *Response response返回体
@@ -135,6 +208,7 @@ func (c *Context) AdvancedResponse(statusCode int, content fiber.Handler) *Respo
 }
 
 // AnyResponse 自定义响应体,响应体可是任意类型
+//
 //	@param	statusCode	int		响应状态码
 //	@param	content		any		响应体
 //	@param	contentType	string	响应头MIME
@@ -182,6 +256,7 @@ func (s *Service) SetServiceContext(ctx CustomContextIface) *Service {
 }
 
 // Addr 绑定地址
+//
 //	@return	string 绑定地址
 func (s *Service) Addr() string { return s.addr }
 
@@ -189,6 +264,7 @@ func (s *Service) Addr() string { return s.addr }
 func (s *Service) Logger() logger.Iface { return s.logger }
 
 // ReplaceLogger 替换日志句柄
+//
 //	@param	logger	logger.Iface	日志句柄
 func (s *Service) ReplaceLogger(logger logger.Iface) { s.logger = logger }
 
@@ -210,7 +286,7 @@ func (s *Service) Validate(stc any) *Response {
 					Loc:  []string{"body", err[i].Field()},
 					Msg:  err[i].Error(),
 					Type: err[i].Type().String(),
-					Ctx:  Dict{},
+					Ctx:  emptyMap,
 				}
 			}
 			return ValidationErrorResponse(ves...)
@@ -218,20 +294,4 @@ func (s *Service) Validate(stc any) *Response {
 	}
 
 	return nil
-}
-
-// Pool Context 池，用以减少运行中的对象分配
-type Pool struct{}
-
-// Init 初始化指定数量的 Context 池
-func (p *Pool) Init(num int) {
-
-}
-
-func (p *Pool) Get() *Context {
-	return &Context{}
-}
-
-func (p *Pool) Put(ctx *Context) {
-
 }

@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/Chendemo12/flaskgo/internal/godantic"
+	"github.com/Chendemo12/functools/helper"
 	"github.com/gofiber/fiber/v2"
 	"net/http"
 )
@@ -17,6 +18,12 @@ const (
 	ErrResponseType
 	HtmlResponseType
 	AdvancedResponseType
+)
+
+const ( // error message
+	ModelNotDefine = "Data model is undefined"
+	ModelNotMatch  = "Value type mismatch"
+	ModelNotString = "Value is not a string"
 )
 
 var responseHeaders []*ResponseHeader
@@ -44,13 +51,22 @@ type ValidationError struct {
 	Loc  []string       `json:"loc" Description:"Location" binding:"required"`
 }
 
-func (v ValidationError) Doc__() string { return "Validation Error" }
+func (v ValidationError) String() string {
+	bytes, err := helper.DefaultJsonMarshal(v)
+	if err != nil {
+		return v.SchemaDesc()
+	} else {
+		return string(bytes)
+	}
+}
+
+func (v ValidationError) SchemaDesc() string { return "Validation Error" }
 
 type HTTPValidationError struct {
 	Detail []*ValidationError `json:"detail" Description:"Detail" binding:"required"`
 }
 
-func (v HTTPValidationError) Doc__() string { return "HTTPValidationError" }
+func (v HTTPValidationError) SchemaDesc() string { return "HTTPValidationError" }
 
 type CustomError404 struct {
 	godantic.BaseModel
@@ -70,6 +86,7 @@ func ValidationErrorResponse(ves ...*ValidationError) *Response {
 }
 
 // AnyResponse 自定义响应体,响应体可是任意类型
+//
 //	@param	statusCode	int		响应状态码
 //	@param	content		any		响应体
 //	@param	contentType	string	响应头MIME
@@ -82,6 +99,7 @@ func AnyResponse(statusCode int, content any, contentType string) *Response {
 }
 
 // JSONResponse 仅支持可以json序列化的响应体
+//
 //	@param	statusCode	int	响应状态码
 //	@param	content		any	可以json序列化的类型
 //	@return	resp *Response response返回体
@@ -92,6 +110,7 @@ func JSONResponse(statusCode int, content any) *Response {
 }
 
 // StringResponse 返回值为字符串对象
+//
 //	@param	content	string	字符串文本
 //	@return	resp *Response response返回体
 func StringResponse(content string) *Response {
@@ -101,6 +120,7 @@ func StringResponse(content string) *Response {
 }
 
 // StreamResponse 返回值为字节流对象
+//
 //	@param	statusCode	int		响应状态码
 //	@param	content		[]byte	字节流
 //	@return	resp *Response response返回体
@@ -111,6 +131,7 @@ func StreamResponse(statusCode int, content []byte) *Response {
 }
 
 // FileResponse 返回值为文件对象，如：照片视频文件流等, 若文件不存在，则状态码置为404
+//
 //	@param	filepath	string	文件路径
 //	@return	resp *Response response返回体
 func FileResponse(filepath string) *Response {
@@ -120,6 +141,7 @@ func FileResponse(filepath string) *Response {
 }
 
 // ErrorResponse 返回一个服务器错误
+//
 //	@param	content	any	错误消息
 //	@return	resp *Response response返回体
 func ErrorResponse(content any) *Response {
@@ -127,6 +149,7 @@ func ErrorResponse(content any) *Response {
 }
 
 // HTMLResponse 返回一段HTML文本
+//
 //	@param	statusCode	int		响应状态码
 //	@param	content		string	HTML文本字符串
 //	@return	resp *Response response返回体
@@ -140,11 +163,13 @@ func HTMLResponse(statusCode int, context string) *Response {
 }
 
 // OKResponse 返回状态码为200的 JSONResponse
+//
 //	@param	content	any	可以json序列化的类型
 //	@return	resp *Response response返回体
 func OKResponse(content any) *Response { return JSONResponse(http.StatusOK, content) }
 
 // AdvancedResponse 高级返回值，允许返回一个函数，以实现任意类型的返回
+//
 //	@param	statusCode	int				响应状态码
 //	@param	content		fiber.Handler	钩子函数
 //	@return	resp *Response response返回体

@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 0.3.4 - (2023-03-04)
+
+### Feat
+
+- `Metadata`新增`otype`字段，进行返回值校验;
+- 完成`StringResponse`的返回值类型校验;
+- 完成`JSONResponse`的返回值类型校验;
+
+### TODO
+
+- [ ] 返回值字段校验;
+
 ## 0.3.3 - (2023-03-04)
 
 ### Fix

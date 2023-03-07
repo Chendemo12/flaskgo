@@ -4,84 +4,85 @@ import "reflect"
 
 func init() {
 	// 初始化基本类型
-	String.SetId("godantic.str")
+	String.SetId("godantic.string")
 	String.Description = QueryFieldTag(String.Tag, "description", String.SchemaName())
 	String.Default = QueryFieldTag(String.Tag, "default", "")
-	SaveMetadata(newEmptyMeta("str"))
+	SaveMetadata(newEmptyMeta("string", StringType))
 
 	Bool.SetId("godantic.bool")
 	Bool.Description = QueryFieldTag(Bool.Tag, "description", Bool.SchemaName())
 	Bool.Default = QueryFieldTag(Bool.Tag, "default", "")
-	SaveMetadata(newEmptyMeta("bool"))
+	SaveMetadata(newEmptyMeta("bool", BoolType))
 
 	// integer
 	Int.SetId("godantic.int")
 	Int.Description = QueryFieldTag(Int.Tag, "description", Int.SchemaName())
 	Int.Default = QueryFieldTag(Int.Tag, "default", "")
-	SaveMetadata(newEmptyMeta("int"))
+	SaveMetadata(newEmptyMeta("int", IntegerType))
 
 	Int8.SetId("godantic.int8")
 	Int8.Description = QueryFieldTag(Int8.Tag, "description", Int8.SchemaName())
 	Int8.Default = QueryFieldTag(Int8.Tag, "default", "")
-	SaveMetadata(newEmptyMeta("int8"))
+	SaveMetadata(newEmptyMeta("int8", IntegerType))
 
 	Int16.SetId("godantic.int16")
 	Int16.Description = QueryFieldTag(Int16.Tag, "description", Int16.SchemaName())
 	Int16.Default = QueryFieldTag(Int16.Tag, "default", "")
-	SaveMetadata(newEmptyMeta("int16"))
+	SaveMetadata(newEmptyMeta("int16", IntegerType))
 
 	Int32.SetId("godantic.int32")
 	Int32.Description = QueryFieldTag(Int32.Tag, "description", Int32.SchemaName())
 	Int32.Default = QueryFieldTag(Int32.Tag, "default", "")
-	SaveMetadata(newEmptyMeta("int32"))
+	SaveMetadata(newEmptyMeta("int32", IntegerType))
 
 	Int64.SetId("godantic.int64")
 	Int64.Description = QueryFieldTag(Int64.Tag, "description", Int64.SchemaName())
 	Int64.Default = QueryFieldTag(Int64.Tag, "default", "")
-	SaveMetadata(newEmptyMeta("int64"))
+	SaveMetadata(newEmptyMeta("int64", IntegerType))
 
 	Uint8.SetId("godantic.uint8")
 	Uint8.Description = QueryFieldTag(Uint8.Tag, "description", Uint8.SchemaName())
 	Uint8.Default = QueryFieldTag(Uint8.Tag, "default", "")
-	SaveMetadata(newEmptyMeta("uint8"))
+	SaveMetadata(newEmptyMeta("uint8", IntegerType))
 
 	Uint16.SetId("godantic.uint16")
 	Uint16.Description = QueryFieldTag(Uint16.Tag, "description", Uint16.SchemaName())
 	Uint16.Default = QueryFieldTag(Uint16.Tag, "default", "")
-	SaveMetadata(newEmptyMeta("uint16"))
+	SaveMetadata(newEmptyMeta("uint16", IntegerType))
 
 	Uint32.SetId("godantic.uint32")
 	Uint32.Description = QueryFieldTag(Uint32.Tag, "description", Uint32.SchemaName())
 	Uint32.Default = QueryFieldTag(Uint32.Tag, "default", "")
-	SaveMetadata(newEmptyMeta("uint32"))
+	SaveMetadata(newEmptyMeta("uint32", IntegerType))
 
 	Uint64.SetId("godantic.uint64")
 	Uint64.Description = QueryFieldTag(Uint64.Tag, "description", Uint64.SchemaName())
 	Uint64.Default = QueryFieldTag(Uint64.Tag, "default", "")
-	SaveMetadata(newEmptyMeta("uint64"))
+	SaveMetadata(newEmptyMeta("uint64", IntegerType))
 
 	Float.SetId("godantic.float")
 	Float.Description = QueryFieldTag(Float.Tag, "description", Float.SchemaName())
 	Float.Default = QueryFieldTag(Float.Tag, "default", "")
-	SaveMetadata(newEmptyMeta("float64"))
+	SaveMetadata(newEmptyMeta("float64", NumberType))
 
 	Float32.SetId("godantic.float32")
 	Float32.Description = QueryFieldTag(Float32.Tag, "description", Float32.SchemaName())
 	Float32.Default = QueryFieldTag(Float32.Tag, "default", "")
-	SaveMetadata(newEmptyMeta("float32"))
+	SaveMetadata(newEmptyMeta("float32", NumberType))
 
 	Float64.SetId("godantic.float64")
 	Float64.Description = QueryFieldTag(Float64.Tag, "description", Float64.SchemaName())
 	Float64.Default = QueryFieldTag(Float64.Tag, "default", "")
-	SaveMetadata(newEmptyMeta("float64"))
+	SaveMetadata(newEmptyMeta("float64", NumberType))
 }
 
-func newEmptyMeta(name string) *Metadata {
+func newEmptyMeta(name string, otype OpenApiDataType) *Metadata {
 	return &Metadata{
 		names:       []string{name, "godantic." + name},
 		fields:      make([]*MetaField, 0),
 		description: name,
 		innerFields: make([]*MetaField, 0),
+		oType:       otype,
 	}
 }
 
@@ -242,6 +243,7 @@ func List(model SchemaIface) *MetaField {
 		mf.ItemRef = rt.String()
 
 		meta := StructReflect(rt)
+		meta.oType = ArrayType
 		SaveMetadata(meta)
 	}
 	return mf

@@ -39,9 +39,12 @@ func routeHandler(f HandlerFunc) fiber.Handler {
 		// 路由唯一标识: c.Method()+RouteSeparator+c.RelativePath()
 		// c.Route().RelativePath 获取注册的路径，
 		// c.RelativePath() 获取匹配后的请求路由
-		route := GetRoute(c.Method(), c.Route().Path) // 获取请求路由
-		if route != nil {                             // 存在路由信息
-			resp := routeParamsValidate(ctx, route) // 路由参数校验
+		if ctx.route == nil {
+			ctx.route = GetRoute(c.Method(), c.Route().Path) // 获取请求路由
+		}
+
+		if ctx.route != nil { // 存在路由信息
+			resp := routeParamsValidate(ctx, ctx.route) // 路由参数校验
 			if resp != nil {
 				// 路径参数或查询参数校验未通过
 				return c.Status(resp.StatusCode).JSON(resp.Content)
@@ -61,7 +64,7 @@ func routeHandler(f HandlerFunc) fiber.Handler {
 
 			// ------------------------------- 校验通过或禁用自动校验 -------------------------------
 			// 处理依赖项
-			resp = dependencyDone(ctx, route)
+			resp = dependencyDone(ctx, ctx.route)
 			if resp != nil {
 				return responseWriter(c, resp) // 返回消息流
 			}

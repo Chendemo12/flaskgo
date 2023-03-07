@@ -124,6 +124,16 @@ func getSimpleFrom(s *flaskgo.Context) *flaskgo.Response {
 	return s.OKResponse(form)
 }
 
+func getExampleForm(s *flaskgo.Context) *flaskgo.Response {
+	//return s.OKResponse(&ExampleForm{Name: s.PathFields["name"]})
+	return s.OKResponse(SimpleForm{
+		Name:     s.PathFields["name"],
+		Age:      0,
+		Content:  nil,
+		Contents: nil,
+	})
+}
+
 func makeRouter() *flaskgo.Router {
 	router := flaskgo.APIRouter("/api/device", []string{"Tunnel"})
 	{
@@ -134,11 +144,7 @@ func makeRouter() *flaskgo.Router {
 			getSimpleFrom,
 		)
 
-		router.GET(
-			"/form/:name", &ExampleForm{}, "获得一个随机表单",
-			func(s *flaskgo.Context) *flaskgo.Response {
-				return s.OKResponse(&ExampleForm{Name: s.PathFields["name"]})
-			})
+		router.GET("/form/:name", &ExampleForm{}, "获得一个随机表单", getExampleForm)
 
 		router.POST("/tunnel/:no", &TunnelWorkParams{}, flaskgo.Int, "设置通道工作参数", makeTunnelWork).
 			SetDescription("设置通道的工作参数，表单内部的`tunnel_no`必须与路径参数保持一致")
