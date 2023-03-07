@@ -214,11 +214,11 @@ func (f *FlaskGo) Service() *Service { return f.service }
 func (f *FlaskGo) CustomServiceContext() CustomContextIface { return f.service.ctx }
 
 // APIRouters 获取全部注册的路由组
-// @return  []*Router 路由组
+//	@return	[]*Router 路由组
 func (f *FlaskGo) APIRouters() []*Router { return f.routers }
 
 // Engine 获取fiber引擎
-// @return  *fiber.App fiber引擎
+//	@return	*fiber.App fiber引擎
 func (f *FlaskGo) Engine() *fiber.App { return f.engine }
 
 // AcquireCtx 申请一个 Context 并初始化
@@ -243,8 +243,8 @@ func (f *FlaskGo) ReleaseCtx(ctx *Context) {
 }
 
 // OnEvent 添加启动事件
-// @param  kind  事件类型，取值需为  "startup"  /  "shutdown"
-// @param  fs    func()     事件
+//	@param	kind	事件类型，取值需为	"startup"	/	"shutdown"
+//	@param	fs		func()		事件
 func (f *FlaskGo) OnEvent(kind EventKind, fc func()) *FlaskGo {
 	switch kind {
 	case startupEvent:
@@ -263,8 +263,8 @@ func (f *FlaskGo) OnEvent(kind EventKind, fc func()) *FlaskGo {
 }
 
 // AddResponseHeader 添加一个响应头
-// @param  key    string  键
-// @param  value  string  值
+//	@param	key		string	键
+//	@param	value	string	值
 func (f *FlaskGo) AddResponseHeader(key, value string) *FlaskGo {
 	// 首先判定是否已经存在
 	for i := 0; i < len(responseHeaders); i++ {
@@ -282,7 +282,7 @@ func (f *FlaskGo) AddResponseHeader(key, value string) *FlaskGo {
 }
 
 // DeleteResponseHeader 删除一个响应头
-// @param  key  string  键
+//	@param	key	string	键
 func (f *FlaskGo) DeleteResponseHeader(key string) *FlaskGo {
 	for i := 0; i < len(responseHeaders); i++ {
 		if responseHeaders[i].Key == key {
@@ -293,14 +293,14 @@ func (f *FlaskGo) DeleteResponseHeader(key string) *FlaskGo {
 }
 
 // ReplaceCtx 替换自定义服务上下文
-// @param  service  CustomContextIface  服务上下文
+//	@param	service	CustomContextIface	服务上下文
 func (f *FlaskGo) ReplaceCtx(ctx CustomContextIface) *FlaskGo {
 	f.service.SetServiceContext(ctx)
 	return f
 }
 
 // ReplaceLogger 替换日志句柄，此操作必须在run之前进行
-// @param  logger  logger.Iface  日志句柄
+//	@param	logger	logger.Iface	日志句柄
 func (f *FlaskGo) ReplaceLogger(logger logger.Iface) *FlaskGo {
 	f.service.ReplaceLogger(logger)
 	return f
@@ -324,14 +324,14 @@ func (f *FlaskGo) ReplaceRecover(fc StackTraceHandlerFunc) *FlaskGo {
 }
 
 // SetDescription 设置APP的详细描述信息
-// @param  Description  string  详细描述信息
+//	@param	Description	string	详细描述信息
 func (f *FlaskGo) SetDescription(description string) *FlaskGo {
 	f.description = description
 	return f
 }
 
 // IncludeRouter 注册一个路由组
-// @param  router  *Router  路由组
+//	@param	router	*Router	路由组
 func (f *FlaskGo) IncludeRouter(router *Router) *FlaskGo {
 	f.routers = append(f.routers, router)
 	return f
@@ -362,8 +362,8 @@ func (f *FlaskGo) ActivateHotSwitch() *FlaskGo {
 }
 
 // Deprecated: RunCronjob 启动定时任务, 此函数内部通过创建一个协程来执行任务，并且阻塞至 FlaskGo 完成初始化
-// @param  tasker   func(service CustomContextIface)  error  定时任务
-// @param  service  CustomContextIface                服务依赖
+//	@param	tasker	func(service CustomContextIface)	error	定时任务
+//	@param	service	CustomContextIface					服务依赖
 func (f *FlaskGo) RunCronjob(_ func(ctx *Service) error) *FlaskGo {
 	return f
 }
@@ -413,11 +413,11 @@ func (f *FlaskGo) Run(host, port string) {
 }
 
 // NewFlaskGo 创建一个WEB服务
-// @param   title    string              Application  name
-// @param   version  string              Version
-// @param   debug    bool                是否开启调试模式
-// @param   service  CustomContextIface  custom ServiceContext
-// @return  *FlaskGo flaskgo对象
+//	@param	title	string				Application	name
+//	@param	version	string				Version
+//	@param	debug	bool				是否开启调试模式
+//	@param	service	CustomContextIface	custom	ServiceContext
+//	@return	*FlaskGo flaskgo对象
 func NewFlaskGo(title, version string, debug bool, ctx CustomContextIface) *FlaskGo {
 	core.SetMode(debug)
 

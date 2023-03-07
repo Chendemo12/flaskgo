@@ -1,7 +1,7 @@
 package godantic
 
 import (
-	"github.com/Chendemo12/functools/helper"
+	"errors"
 	"github.com/Chendemo12/functools/structfuncs"
 	"reflect"
 	"strconv"
@@ -60,7 +60,7 @@ type Field struct {
 func (f *Field) Schema() (m map[string]any) {
 	// 最基础的属性，必须
 	m = dict{
-		"name":        f.SchemaName(),
+		"name":        f.SchemaName(true),
 		"title":       f.Title,
 		"type":        f.OType,
 		"required":    f.IsRequired(),
@@ -138,23 +138,18 @@ func (f *Field) Schema() (m map[string]any) {
 }
 
 // SchemaName swagger文档字段名
-func (f *Field) SchemaName(exclude ...bool) string { return QueryJsonName(f.Tag, f.Title) }
+func (f *Field) SchemaName(exclude ...bool) string {
+	if len(exclude) > 0 {
+		return QueryJsonName(f.Tag, f.Title)
+	}
+	return f._pkg
+}
 
 // SchemaDesc 字段注释说明
 func (f *Field) SchemaDesc() string { return f.Description }
 
 // SchemaType 模型类型
 func (f *Field) SchemaType() OpenApiDataType { return f.OType }
-
-// SchemaJson swagger文档字符串格式
-func (f *Field) SchemaJson() string {
-	bytes, err := helper.DefaultJsonMarshal(f.Schema())
-	if err != nil {
-		return string(bytes)
-	} else {
-		return ""
-	}
-}
 
 // IsRequired 字段是否必须
 func (f *Field) IsRequired() bool { return IsFieldRequired(f.Tag) }
@@ -168,7 +163,19 @@ func (f *Field) InnerSchema() (m map[string]map[string]any) {
 	return
 }
 
-func (f *Field) Metadata() *Metadata { return GetMetadata(f._pkg) }
+func (f *Field) Metadata() (*Metadata, error) {
+	if f._pkg == "" {
+		rt := reflect.TypeOf(f).Elem()
+		f._pkg = rt.String()
+	}
+
+	meta := GetMetadata(f._pkg)
+	if meta != nil {
+		return meta, nil
+	}
+
+	return nil, errors.New("struct is not a BaseModel")
+}
 
 func (f *Field) SetId(id string) { f._pkg = id }
 
@@ -221,9 +228,9 @@ func (b *BaseModel) Schema() (m map[string]any) {
 			continue
 		}
 
-		properties[field.SchemaName()] = field.Schema()
+		properties[field.SchemaName(true)] = field.Schema()
 		if field.IsRequired() {
-			required = append(required, field.SchemaName())
+			required = append(required, field.SchemaName(true))
 		}
 	}
 
@@ -233,7 +240,7 @@ func (b *BaseModel) Schema() (m map[string]any) {
 }
 
 // SchemaName 获取结构体的名称,默认包含包名
-// @param  exclude  []bool  是否排除包名LL
+//	@param	exclude	[]bool	是否排除包名LL
 func (b *BaseModel) SchemaName(exclude ...bool) string {
 	meta := GetMetadata(b._pkg)
 	if len(exclude) > 0 { // 排除包名
@@ -244,28 +251,25 @@ func (b *BaseModel) SchemaName(exclude ...bool) string {
 }
 
 // SchemaDesc 结构体文档注释
-func (b *BaseModel) SchemaDesc() string { return "" }
+func (b *BaseModel) SchemaDesc() string {
+	meta, err := b.Metadata()
+	if err != nil {
+		return ""
+	}
+
+	return meta.description
+}
 
 // SchemaType 模型类型
 func (b *BaseModel) SchemaType() OpenApiDataType { return ObjectType }
-
-// SchemaJson 输出为OpenAPI文档模型,字符串格式
-func (b *BaseModel) SchemaJson() string {
-	bytes, err := helper.DefaultJsonMarshal(b.Schema())
-	if err != nil {
-		return string(bytes)
-	} else {
-		return ""
-	}
-}
 
 // InnerSchema 内部字段模型文档
 func (b *BaseModel) InnerSchema() (m map[string]map[string]any) {
 	meta := GetMetadata(b._pkg)
 	for i := 0; i < len(meta.innerFields); i++ {
 		// TODO: error
-		if meta.innerFields[i].Exported && !strings.HasPrefix(meta.innerFields[i].SchemaName(), "_") {
-			m[meta.innerFields[i].SchemaName()] = meta.innerFields[i].Schema()
+		if meta.innerFields[i].Exported && !strings.HasPrefix(meta.innerFields[i].SchemaName(true), "_") {
+			m[meta.innerFields[i].SchemaName(true)] = meta.innerFields[i].Schema()
 		}
 	}
 
@@ -381,7 +385,19 @@ func (b *BaseModel) Copy() any {
 }
 
 // Metadata 获取反射后的字段元信息, 此字段应慎重使用
-func (b *BaseModel) Metadata() *Metadata { return GetMetadata(b._pkg) }
+func (b *BaseModel) Metadata() (*Metadata, error) {
+	if b._pkg == "" {
+		rt := reflect.TypeOf(b).Elem()
+		b._pkg = rt.String()
+	}
+
+	meta := GetMetadata(b._pkg)
+	if meta != nil {
+		return meta, nil
+	}
+
+	return nil, errors.New("struct is not a BaseModel")
+}
 
 // SetId 设置结构体的唯一标识
 func (b *BaseModel) SetId(id string) { b._pkg = id }

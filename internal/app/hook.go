@@ -27,7 +27,7 @@ type StackTraceHandlerFunc = func(c *fiber.Ctx, e any)
 // 序列化成功之后会校验请求参数正确性（开关控制），校验通过后会接着将ctx传入handler
 // 执行handler之后将校验返回值（开关控制），并返回422或写入响应体。
 //
-// @return  fiber.Handler fiber路由处理方法
+//	@return	fiber.Handler fiber路由处理方法
 func routeHandler(f HandlerFunc) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 

@@ -9,12 +9,10 @@ type SchemaIface interface {
 	SchemaDesc() string
 	// SchemaType 模型类型
 	SchemaType() OpenApiDataType
-	// SchemaJson 输出为OpenAPI文档模型,字符串格式
-	SchemaJson() string
 	// IsRequired 字段是否必须
 	IsRequired() bool
 	// Metadata 获取反射后的字段元信息
-	Metadata() *Metadata
+	Metadata() (*Metadata, error)
 	// SetId 设置结构体的唯一标识
 	SetId(id string)
 }

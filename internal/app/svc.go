@@ -25,11 +25,11 @@ type Context struct {
 }
 
 // Service 获取 FlaskGo 的 Service 服务依赖信息
-// @return  Service 服务依赖信息
+//	@return	Service 服务依赖信息
 func (c *Context) Service() *Service { return c.app.Service() }
 
 // Context 获取web引擎的上下文 Service
-// @return  *fiber.Ctx fiber.App 的上下文信息
+//	@return	*fiber.Ctx fiber.App 的上下文信息
 func (c *Context) Context() *fiber.Ctx { return c.ec }
 
 // CustomContext 获取自定义服务上下文
@@ -53,9 +53,9 @@ func (c *Context) Validator() *validator.Validate { return c.app.service.validat
 func (c *Context) Validate(stc any) *Response { return c.app.service.Validate(stc) }
 
 // BodyParser 序列化请求体
-// @param   c  *fiber.Ctx  fiber上下文
-// @param   a  any         请求体指针
-// @return  *Response 错误信息,若为nil 则序列化成功
+//	@param	c	*fiber.Ctx	fiber上下文
+//	@param	a	any			请求体指针
+//	@return	*Response 错误信息,若为nil 则序列化成功
 func (c *Context) BodyParser(a any) *Response {
 	if err := c.Context().BodyParser(a); err != nil { // 请求的表单序列化错误
 		return ValidationErrorResponse(jsoniterUnmarshalErrorToValidationError(err))
@@ -77,68 +77,68 @@ func (c *Context) ShouldBindJSON(stc any) *Response {
 }
 
 // OKResponse 返回状态码为200的 JSONResponse
-// @param   content  any  可以json序列化的类型
-// @return  resp *Response response返回体
+//	@param	content	any	可以json序列化的类型
+//	@return	resp *Response response返回体
 func (c *Context) OKResponse(content any) *Response { return OKResponse(content) }
 
 // JSONResponse 仅支持可以json序列化的响应体
-// @param   statusCode  int  响应状态码
-// @param   content     any  可以json序列化的类型
-// @return  resp *Response response返回体
+//	@param	statusCode	int	响应状态码
+//	@param	content		any	可以json序列化的类型
+//	@return	resp *Response response返回体
 func (c *Context) JSONResponse(statusCode int, content any) *Response {
 	return JSONResponse(statusCode, content)
 }
 
 // StringResponse 返回值为字符串对象
-// @param   content  string  字符串文本
-// @return  resp *Response response返回体
+//	@param	content	string	字符串文本
+//	@return	resp *Response response返回体
 func (c *Context) StringResponse(content string) *Response {
 	return StringResponse(content)
 }
 
 // StreamResponse 返回值为字节流对象
-// @param   statusCode  int     响应状态码
-// @param   content     []byte  字节流
-// @return  resp *Response response返回体
+//	@param	statusCode	int		响应状态码
+//	@param	content		[]byte	字节流
+//	@return	resp *Response response返回体
 func (c *Context) StreamResponse(statusCode int, content []byte) *Response {
 	return StreamResponse(statusCode, content)
 }
 
 // FileResponse 返回值为文件对象，如：照片视频文件流等, 若文件不存在，则状态码置为404
-// @param   filepath  string  文件路径
-// @return  resp *Response response返回体
+//	@param	filepath	string	文件路径
+//	@return	resp *Response response返回体
 func (c *Context) FileResponse(filepath string) *Response {
 	return FileResponse(filepath)
 }
 
 // ErrorResponse 返回一个服务器错误
-// @param   content  any  错误消息
-// @return  resp *Response response返回体
+//	@param	content	any	错误消息
+//	@return	resp *Response response返回体
 func (c *Context) ErrorResponse(content any) *Response {
 	return ErrorResponse(content)
 }
 
 // HTMLResponse 返回一段HTML文本
-// @param   statusCode  int     响应状态码
-// @param   content     string  HTML文本字符串
-// @return  resp *Response response返回体
+//	@param	statusCode	int		响应状态码
+//	@param	content		string	HTML文本字符串
+//	@return	resp *Response response返回体
 func (c *Context) HTMLResponse(statusCode int, context string) *Response {
 	return HTMLResponse(statusCode, context)
 }
 
 // AdvancedResponse 高级返回值，允许返回一个函数，以实现任意类型的返回
-// @param   statusCode  int            响应状态码
-// @param   content     fiber.Handler  钩子函数
-// @return  resp *Response response返回体
+//	@param	statusCode	int				响应状态码
+//	@param	content		fiber.Handler	钩子函数
+//	@return	resp *Response response返回体
 func (c *Context) AdvancedResponse(statusCode int, content fiber.Handler) *Response {
 	return AdvancedResponse(statusCode, content)
 }
 
 // AnyResponse 自定义响应体,响应体可是任意类型
-// @param   statusCode   int     响应状态码
-// @param   content      any     响应体
-// @param   contentType  string  响应头MIME
-// @return  resp *Response response返回体
+//	@param	statusCode	int		响应状态码
+//	@param	content		any		响应体
+//	@param	contentType	string	响应头MIME
+//	@return	resp *Response response返回体
 func (c *Context) AnyResponse(statusCode int, content any, contentType string) *Response {
 	return AnyResponse(statusCode, content, contentType)
 }
@@ -182,14 +182,14 @@ func (s *Service) SetServiceContext(ctx CustomContextIface) *Service {
 }
 
 // Addr 绑定地址
-// @return string 绑定地址
+//	@return	string 绑定地址
 func (s *Service) Addr() string { return s.addr }
 
 // Logger 获取日志句柄
 func (s *Service) Logger() logger.Iface { return s.logger }
 
 // ReplaceLogger 替换日志句柄
-// @param  logger  logger.Iface  日志句柄
+//	@param	logger	logger.Iface	日志句柄
 func (s *Service) ReplaceLogger(logger logger.Iface) { s.logger = logger }
 
 // Validator 获取请求体验证器

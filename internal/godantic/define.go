@@ -1,5 +1,7 @@
 package godantic
 
+import "reflect"
+
 func init() {
 	// 初始化基本类型
 	String.SetId("godantic.str")
@@ -209,18 +211,38 @@ var (
 	}
 )
 
-func List(model SchemaIface) *Field {
-	meta := GetMetadataFactory().Reflect(model)
-	SaveMetadata(meta)
-	model.SetId(meta.Id())
-
-	return &Field{
-		_pkg:        meta.Id(),
-		Title:       meta.String(),
-		Tag:         "",
-		Description: model.SchemaDesc(),
-		Default:     "",
-		ItemRef:     model.SchemaName(),
-		OType:       ArrayType,
+func List(model SchemaIface) *MetaField {
+	rt := reflect.TypeOf(model)
+	if rt.Kind() == reflect.Ptr {
+		rt = rt.Elem()
 	}
+	mf := &MetaField{
+		Field: Field{
+			Tag:         `binding:"required"`,
+			Description: model.SchemaDesc(),
+			Default:     "",
+			OType:       ArrayType,
+		},
+		Index:     0,
+		Exported:  true,
+		Anonymous: false,
+		RType:     rt,
+	}
+
+	if field, ok := model.(*Field); ok {
+		mf._pkg = field._pkg
+		mf.Title = field.Title
+		mf.Tag = field.Tag
+		mf.Description = field.Description
+		mf.Default = field.Default
+		mf.ItemRef = field.SchemaName()
+	} else {
+		mf._pkg = rt.String()
+		mf.Title = rt.Name()
+		mf.ItemRef = rt.String()
+
+		meta := StructReflect(rt)
+		SaveMetadata(meta)
+	}
+	return mf
 }

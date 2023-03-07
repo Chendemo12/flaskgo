@@ -7,7 +7,7 @@ import (
 )
 
 // reflectKindToOType 转换reflect.Kind为swagger类型说明
-// @param  ReflectKind  reflect.Kind  反射类型
+//	@param	ReflectKind	reflect.Kind	反射类型
 func reflectKindToOType(kind reflect.Kind) (name OpenApiDataType) {
 	switch kind {
 
@@ -77,10 +77,10 @@ func IsArray(object any) bool {
 }
 
 // QueryFieldTag 查找struct字段的Tag
-// @param   tag        reflect.StructTag  字段的Tag
-// @param   label      string             要查找的标签
-// @param   undefined  string             当查找的标签不存在时返回的默认值
-// @return  string 查找到的标签值, 不存在则返回提供的默认值
+//	@param	tag			reflect.StructTag	字段的Tag
+//	@param	label		string				要查找的标签
+//	@param	undefined	string				当查找的标签不存在时返回的默认值
+//	@return	string 查找到的标签值, 不存在则返回提供的默认值
 func QueryFieldTag(tag reflect.StructTag, label string, undefined string) string {
 	if tag == "" {
 		return undefined

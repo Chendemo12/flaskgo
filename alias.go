@@ -118,5 +118,5 @@ func DisableMultipleProcess() { core.MultipleProcessDisabled = true }
 func ShutdownWithTimeout() time.Duration { return core.ShutdownWithTimeout * time.Second }
 
 // SetShutdownTimeout 修改关机前最大等待时间
-// @param  timeout  in  修改关机前最大等待时间,  单位秒
+//	@param	timeout	in	修改关机前最大等待时间,	单位秒
 func SetShutdownTimeout(timeout int) { core.ShutdownWithTimeout = time.Duration(timeout) }

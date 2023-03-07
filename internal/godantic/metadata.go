@@ -1,7 +1,6 @@
 package godantic
 
 import (
-	"github.com/Chendemo12/functools/helper"
 	"reflect"
 	"strings"
 	"unicode"
@@ -108,9 +107,9 @@ func (m *Metadata) Schema() map[string]any {
 			continue
 		}
 
-		properties[field.SchemaName()] = field.Schema()
+		properties[field.SchemaName(true)] = field.Schema()
 		if field.IsRequired() {
-			required = append(required, field.SchemaName())
+			required = append(required, field.SchemaName(true))
 		}
 	}
 
@@ -124,21 +123,11 @@ func (m *Metadata) SchemaDesc() string { return m.description }
 // SchemaType 模型类型
 func (m *Metadata) SchemaType() OpenApiDataType { return ObjectType }
 
-// SchemaJson 输出为OpenAPI文档模型,字符串格式
-func (m *Metadata) SchemaJson() string {
-	bytes, err := helper.DefaultJsonMarshal(m.Schema())
-	if err != nil {
-		return string(bytes)
-	} else {
-		return ""
-	}
-}
-
 // IsRequired 字段是否必须
 func (m *Metadata) IsRequired() bool { return true }
 
 // Metadata 获取反射后的字段元信息
-func (m *Metadata) Metadata() *Metadata { return m }
+func (m *Metadata) Metadata() (*Metadata, error) { return m, nil }
 
 // SetId 设置结构体的唯一标识
 func (m *Metadata) SetId(id string) { m.names[1] = id }
@@ -179,10 +168,19 @@ func (m *MetaClass) Set(meta *Metadata) { m.Save(meta) }
 
 // Reflect 反射建立任意类型的元信息
 func (m *MetaClass) Reflect(model SchemaIface) *Metadata {
-	if nm, ok := model.(*Field); ok { // 接口处定义了基本数据类型, 或List
-		if GetMetadata(nm._pkg) != nil {
-			return nm.Metadata()
+	if nm, ok := model.(*Field); ok { // 接口处定义了基本数据类型
+		if meta := GetMetadata(nm._pkg); meta != nil {
+			return meta
 		}
+	}
+	if nm, ok := model.(*MetaField); ok { // 接口处定义了List
+		meta := GetMetadata(nm._pkg)
+		if meta == nil {
+			meta = StructReflect(nm.RType)
+			SaveMetadata(meta)
+		}
+
+		return meta
 	}
 
 	rt := reflect.TypeOf(model) // 由于接口定义，此处全部为结构体指针
@@ -210,7 +208,6 @@ func (m *ModelReflect) extractField(structField reflect.StructField, no int) {
 	}
 
 	// ---------------------------------- 获取字段信息 ----------------------------------
-
 	fieldMeta := m.structFieldToMetaField(structField)
 	if no < 1 { // 根模型字段
 		m.metadata.AddField(fieldMeta)
@@ -239,10 +236,6 @@ func (m *ModelReflect) extractField(structField reflect.StructField, no int) {
 	case ArrayType: // 字段为数组
 		no += 1
 		fieldElemType := structField.Type.Elem() // 子元素类型
-		if fieldElemType.Kind() == reflect.Ptr {
-			fieldElemType = fieldElemType.Elem()
-		}
-
 		m.parseFieldWhichIsArray(fieldElemType, fieldMeta, no)
 	}
 }
@@ -272,9 +265,9 @@ func (m *ModelReflect) structFieldToMetaField(field reflect.StructField) *MetaFi
 }
 
 // 处理字段是数组的元素
-// @param elemType reflect.Type 子元素类型
-// @param metadata *Metadata 根模型元信息
-// @param metaField *MetaField 字段元信息
+//	@param	elemType	reflect.Type	子元素类型
+//	@param	metadata	*Metadata		根模型元信息
+//	@param	metaField	*MetaField		字段元信息
 func (m *ModelReflect) parseFieldWhichIsArray(elemType reflect.Type, fieldMeta *MetaField, no int) {
 	if elemType.Kind() == reflect.Pointer { // 数组元素为指针结构体
 		elemType = elemType.Elem()
@@ -284,9 +277,9 @@ func (m *ModelReflect) parseFieldWhichIsArray(elemType reflect.Type, fieldMeta *
 	kind := elemType.Kind()
 	switch kind {
 	case reflect.String:
-		fieldMeta.ItemRef = String.SchemaName()
+		fieldMeta.ItemRef = String.SchemaName(true)
 	case reflect.Bool:
-		fieldMeta.ItemRef = Bool.SchemaName()
+		fieldMeta.ItemRef = Bool.SchemaName(true)
 
 	case reflect.Array, reflect.Slice, reflect.Chan: // [][]*Student
 		mf := &MetaField{
@@ -294,7 +287,7 @@ func (m *ModelReflect) parseFieldWhichIsArray(elemType reflect.Type, fieldMeta *
 				_pkg:        elemType.String(),
 				Title:       elemType.Name(),
 				Tag:         "",
-				Description: "",
+				Description: fieldMeta.Description,
 				Default:     "",
 				ItemRef:     "",
 				OType:       ArrayType,
@@ -304,12 +297,28 @@ func (m *ModelReflect) parseFieldWhichIsArray(elemType reflect.Type, fieldMeta *
 			Anonymous: false,
 			RType:     elemType,
 		}
-		fieldMeta.ItemRef = mf.SchemaName()
+		fieldMeta.ItemRef = elemType.String()
 		m.metadata.AddInnerField(mf)
 		no += 1
 		m.parseFieldWhichIsArray(elemType.Elem(), mf, no)
 
 	case reflect.Struct:
+		mf := &MetaField{
+			Field: Field{
+				_pkg:        elemType.String(),
+				Title:       elemType.Name(),
+				Tag:         "",
+				Description: fieldMeta.Description,
+				Default:     "",
+				ItemRef:     "",
+				OType:       ObjectType,
+			},
+			Index:     0,
+			Exported:  true,
+			Anonymous: false,
+			RType:     elemType,
+		}
+		m.metadata.AddInnerField(mf)
 		fieldMeta.ItemRef = elemType.String()
 		no += 1
 		for i := 0; i < elemType.NumField(); i++ { // 此时必不是指针
@@ -319,18 +328,18 @@ func (m *ModelReflect) parseFieldWhichIsArray(elemType reflect.Type, fieldMeta *
 
 	default:
 		if reflect.Bool < kind && kind <= reflect.Uint64 {
-			fieldMeta.ItemRef = Int.SchemaName()
+			fieldMeta.ItemRef = Int.SchemaName(true)
 		}
 		if reflect.Float32 <= kind && kind <= reflect.Complex128 {
-			fieldMeta.ItemRef = Float.SchemaName()
+			fieldMeta.ItemRef = Float.SchemaName(true)
 		}
 	}
 }
 
 // 处理字段是结构体的元素
-// @param elemType reflect.Type 子元素类型
-// @param metadata *Metadata 根模型元信息
-// @param metaField *MetaField 字段元信息
+//	@param	elemType	reflect.Type	子元素类型
+//	@param	metadata	*Metadata		根模型元信息
+//	@param	metaField	*MetaField		字段元信息
 func (m *ModelReflect) parseFieldWhichIsStruct(elemType reflect.Type, fieldMeta *MetaField, no int) {
 	fieldMeta.ItemRef = elemType.String() // 关联模型
 

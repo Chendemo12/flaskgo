@@ -61,8 +61,13 @@ func (c *Components) MarshalJSON() ([]byte, error) {
 	m := make(map[string]map[string]any, 0)
 	for _, v := range c.Scheme {
 		m[v.Name] = v.Model.Schema() // 记录根模型
+		meta, err := v.Model.Metadata()
+		if err != nil {
+			continue
+		}
+
 		// 从 BaseModel 生成模型，处理嵌入类型
-		for _, innerF := range v.Model.Metadata().InnerFields() {
+		for _, innerF := range meta.InnerFields() {
 			if innerM := innerF.InnerModel(); innerM != nil { // 发现子模型
 				m[innerM.SchemaName()] = innerM.Schema()
 			}
@@ -142,7 +147,7 @@ func (s ArrayModelContentSchema) Schema() map[string]any {
 	return map[string]any{
 		"title": s.Title,
 		"type":  godantic.ArrayType,
-		"items": s.Items,
+		"items": map[string]string{godantic.RefName: godantic.RefPrefix + s.Items.Name},
 	}
 }
 
