@@ -83,8 +83,8 @@ func (f *FlaskGo) DeleteResponseHeader(key string) *FlaskGo {
 
 // Deprecated: RunCronjob 启动定时任务, 此函数内部通过创建一个协程来执行任务，并且阻塞至 FlaskGo 完成初始化
 //
-//	@param	tasker	func(service CustomContextIface)	error	定时任务
-//	@param	service	CustomContextIface					服务依赖
+//	@param	tasker	func(service CustomService)	error	定时任务
+//	@param	service	CustomService				服务依赖
 func (f *FlaskGo) RunCronjob(_ func(ctx *Service) error) *FlaskGo {
 	return f
 }

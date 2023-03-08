@@ -6,6 +6,7 @@ package flaskgo
 import (
 	"github.com/Chendemo12/flaskgo/internal/app"
 	"github.com/Chendemo12/flaskgo/internal/godantic"
+	"github.com/Chendemo12/functools/cronjob"
 )
 
 //goland:noinspection GoUnusedGlobalVariable
@@ -63,8 +64,11 @@ type H = map[string]any // gin.H
 type M = map[string]any // fiber.M
 type SM = map[string]string
 type Map = map[string]any // python map
-type ServiceContextIface = app.CustomContextIface
-type CustomContextIface = app.CustomContextIface
+type ServiceContextIface = app.CustomService
+
+// Deprecated: CustomContextIface use CustomService instead
+type CustomContextIface = app.CustomService
+type CustomService = app.CustomService
 type ServiceContext = app.Context
 type Context = app.Context
 type Service = app.Service
@@ -79,9 +83,9 @@ type Response = app.Response
 type ResponseHeader = app.ResponseHeader
 type ValidationError = app.ValidationError
 
-type CronJob = app.CronJob
-type Scheduler = app.Scheduler
-type CronJobFunc = app.CronJobFunc
+type CronJob = cronjob.CronJob
+type Scheduler = cronjob.Scheduler
+type CronJobFunc = cronjob.Func
 
 //goland:noinspection GoUnusedGlobalVariable
 var (

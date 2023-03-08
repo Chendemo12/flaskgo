@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Chendemo12/flaskgo/internal/core"
 	"github.com/Chendemo12/flaskgo/internal/godantic"
+	"github.com/Chendemo12/functools/cronjob"
 	"github.com/Chendemo12/functools/logger"
 	"github.com/Chendemo12/functools/python"
 	"github.com/go-playground/validator/v10"
@@ -37,22 +38,21 @@ type Event struct {
 }
 
 type FlaskGo struct {
-	isStarted   chan struct{}      `description:"标记程序是否完成启动"`
-	background  context.Context    `description:"根 context.Context"`
-	ctx         context.Context    `description:"可以取消的context.Context"`
+	ctx         context.Context    `description:"根 Context"`
+	scheduler   *cronjob.Scheduler `description:"定时任务"`
 	cancel      context.CancelFunc `description:"取消函数"`
 	service     *Service           `description:"全局服务依赖"`
 	engine      *fiber.App         `description:"fiber.App"`
-	version     string             `description:"程序版本号"`
+	pool        *sync.Pool         `description:"FlaskGo.Context资源池"`
+	isStarted   chan struct{}      `description:"标记程序是否完成启动"`
 	host        string             `description:"运行地址"`
-	port        string             `description:"运行端口"`
 	description string             `description:"程序描述"`
 	title       string             `description:"程序名,同时作为日志文件名"`
-	jobs        []*Scheduler       `description:"定时任务"`
+	port        string             `description:"运行端口"`
+	version     string             `description:"程序版本号"`
 	routers     []*Router          `description:"FlaskGo 路由组 Router"`
 	events      []*Event           `description:"启动和关闭事件"`
 	middlewares []any              `description:"自定义中间件"`
-	pool        *sync.Pool         `description:"FlaskGo.Context资源池"`
 }
 
 func (f *FlaskGo) isFieldsOk() *FlaskGo {
@@ -74,6 +74,7 @@ func (f *FlaskGo) isFieldsOk() *FlaskGo {
 			return c
 		},
 	}
+	f.scheduler.SetLogger(f.service.Logger())
 
 	return f
 }
@@ -167,17 +168,6 @@ func (f *FlaskGo) initialize() *FlaskGo {
 	return f
 }
 
-func (f *FlaskGo) runCronJob() *FlaskGo {
-	defer close(f.isStarted)
-
-	for _, job := range f.jobs {
-		f.service.Logger().Debug(fmt.Sprintf("Cronjob: '%s' started.", job.String()))
-		job.Run()
-	}
-
-	return f
-}
-
 // serve 初始化服务
 func (f *FlaskGo) serve() *FlaskGo {
 	f.isFieldsOk().initialize().ActivateHotSwitch()
@@ -193,7 +183,10 @@ func (f *FlaskGo) serve() *FlaskGo {
 	f.service.Logger().Debug("HTTP server listening on: " + f.service.Addr())
 
 	// 在各种初始化及启动事件执行完成之后触发
-	return f.runCronJob()
+	f.scheduler.Run()
+	defer close(f.isStarted)
+
+	return f
 }
 
 // Title 应用程序名和日志文件名
@@ -214,7 +207,7 @@ func (f *FlaskGo) Done() <-chan struct{} { return f.ctx.Done() }
 func (f *FlaskGo) Service() *Service { return f.service }
 
 // CustomServiceContext 获取上层自定义服务依赖
-func (f *FlaskGo) CustomServiceContext() CustomContextIface { return f.service.ctx }
+func (f *FlaskGo) CustomServiceContext() CustomService { return f.service.ctx }
 
 // APIRouters 获取全部注册的路由组
 //
@@ -273,8 +266,8 @@ func (f *FlaskGo) OnShutdown(fc func()) *FlaskGo {
 
 // ReplaceCtx 替换自定义服务上下文
 //
-//	@param	service	CustomContextIface	服务上下文
-func (f *FlaskGo) ReplaceCtx(ctx CustomContextIface) *FlaskGo {
+//	@param	service	CustomService	服务上下文
+func (f *FlaskGo) ReplaceCtx(ctx CustomService) *FlaskGo {
 	f.service.SetServiceContext(ctx)
 	return f
 }
@@ -311,16 +304,8 @@ func (f *FlaskGo) Use(middleware ...any) *FlaskGo {
 
 // AddCronjob 添加定时任务(循环调度任务)
 // 此任务会在各种初始化及启动事件全部执行完成之后触发
-func (f *FlaskGo) AddCronjob(jobs ...CronJob) *FlaskGo {
-	for _, job := range jobs {
-		j := &Scheduler{
-			job:    job,
-			pctx:   f.ctx, // 绑定父节点Context
-			ticker: time.NewTicker(job.Interval()),
-		}
-		f.jobs = append(f.jobs, j)
-	}
-
+func (f *FlaskGo) AddCronjob(jobs ...cronjob.CronJob) *FlaskGo {
+	f.scheduler.Add(jobs...)
 	return f
 }
 
@@ -342,6 +327,9 @@ func (f *FlaskGo) ActivateHotSwitch() *FlaskGo {
 
 	return f
 }
+
+// Scheduler 获取内部调度器
+func (f *FlaskGo) Scheduler() *cronjob.Scheduler { return f.scheduler }
 
 // Shutdown 平滑关闭
 func (f *FlaskGo) Shutdown() {
@@ -396,12 +384,12 @@ func (f *FlaskGo) Run(host, port string) {
 
 // NewFlaskGo 创建一个WEB服务
 //
-//	@param	title	string				Application	name
-//	@param	version	string				Version
-//	@param	debug	bool				是否开启调试模式
-//	@param	service	CustomContextIface	custom	ServiceContext
+//	@param	title	string			Application	name
+//	@param	version	string			Version
+//	@param	debug	bool			是否开启调试模式
+//	@param	service	CustomService	custom	ServiceContext
 //	@return	*FlaskGo flaskgo对象
-func NewFlaskGo(title, version string, debug bool, ctx CustomContextIface) *FlaskGo {
+func NewFlaskGo(title, version string, debug bool, svc CustomService) *FlaskGo {
 	core.SetMode(debug)
 
 	once.Do(func() {
@@ -409,13 +397,13 @@ func NewFlaskGo(title, version string, debug bool, ctx CustomContextIface) *Flas
 			title:       title,
 			version:     version,
 			description: title + " Micro Context",
-			background:  context.Background(),
-			service:     &Service{ctx: ctx, validate: validator.New()},
+			service:     &Service{ctx: svc, validate: validator.New()},
 			isStarted:   make(chan struct{}, 1),
 			middlewares: make([]any, 0),
 			events:      make([]*Event, 0),
 		}
-		appEngine.ctx, appEngine.cancel = context.WithCancel(appEngine.background)
+		appEngine.ctx, appEngine.cancel = context.WithCancel(context.Background())
+		appEngine.scheduler = cronjob.NewScheduler(appEngine.ctx, nil)
 	})
 
 	return appEngine

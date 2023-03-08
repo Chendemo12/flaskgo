@@ -1,5 +1,5 @@
-github.com/Chendemo12/functools v0.1.19 h1:OjpCvpKvFHuhMvxEkK2Zio4DhJAVp/YSKHV8VPFMoAY=
-github.com/Chendemo12/functools v0.1.19/go.mod h1:XcVZ8klM/dpbxQHS8pgKJZWTcSGsakcqMeroJi0bsgU=
+github.com/Chendemo12/functools v0.1.21 h1:n8M9V7q0PnwjnqdMgy33sOBcAFpE6buqoah4GFVRU5U=
+github.com/Chendemo12/functools v0.1.21/go.mod h1:XcVZ8klM/dpbxQHS8pgKJZWTcSGsakcqMeroJi0bsgU=
 github.com/andybalholm/brotli v1.0.4 h1:V7DdXeJtZscaqfNuAdSRuRFzuiKlHSC/Zh3zl9qY3JY=
 github.com/andybalholm/brotli v1.0.4/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=

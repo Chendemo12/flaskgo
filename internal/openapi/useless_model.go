@@ -2,9 +2,9 @@ package openapi
 
 // ServerVariable 服务器变量(不常用)
 type ServerVariable struct {
-	Enum        []string `json:"enum" description:"可选项"`
 	Default     string   `json:"default" description:"默认值"`
 	Description string   `json:"description" description:"说明"`
+	Enum        []string `json:"enum" description:"可选项"`
 }
 
 // Server 服务器配置信息(不常用)
@@ -16,9 +16,9 @@ type Server struct {
 
 // Encoding 编码(不常用)
 type Encoding struct {
-	ContentType   string // "application/json" fiber.MIMEApplicationJSON
-	Headers       []Header
+	ContentType   string
 	Style         string
+	Headers       []Header
 	Explode       bool
 	AllowReserved bool
 }
@@ -30,10 +30,10 @@ type MediaType struct {
 
 // Header 请求头参数,通常与认证相关(不常用)
 type Header struct {
+	Content     map[string]MediaType `json:"content" description:""`
 	Description string               `json:"description" description:"说明"`
 	Required    bool                 `json:"required" description:"是否必须"`
 	Deprecated  bool                 `json:"deprecated" description:"是否禁用"`
-	Content     map[string]MediaType `json:"content" description:""`
 }
 
 type APIKeyIn string

@@ -46,8 +46,8 @@ func (r *Reference) MarshalJSON() ([]byte, error) {
 
 // ComponentScheme openapi 的模型文档部分
 type ComponentScheme struct {
-	Name  string               `json:"name" description:"模型名称，包含包名"`
 	Model godantic.SchemaIface `json:"model" description:"模型定义"`
+	Name  string               `json:"name" description:"模型名称，包含包名"`
 }
 
 // Components openapi 的模型部分
@@ -103,18 +103,18 @@ const (
 // ParameterBase 各种参数的基类
 type ParameterBase struct {
 	Description string                   `json:"description,omitempty" description:"说明"`
+	Type        godantic.OpenApiDataType `json:"type" description:"数据类型"`
 	Required    bool                     `json:"required" description:"是否必须"`
 	Deprecated  bool                     `json:"deprecated" description:"是否禁用"`
-	Type        godantic.OpenApiDataType `json:"type" description:"数据类型"`
 }
 
 // Parameter 路径参数或者查询参数
 type Parameter struct {
+	Default any `json:"default,omitempty" description:"默认值"`
 	ParameterBase
-	Title   string          `json:"title"`
-	Name    string          `json:"name" description:"名称"`
-	In      ParameterInType `json:"in" description:"参数位置"`
-	Default any             `json:"default,omitempty" description:"默认值"`
+	Title string          `json:"title"`
+	Name  string          `json:"name" description:"名称"`
+	In    ParameterInType `json:"in" description:"参数位置"`
 }
 
 type ModelContentSchema interface {
@@ -167,14 +167,14 @@ func (s ObjectModelContentSchema) Schema() map[string]any {
 
 // RequestBody 路由 请求体模型文档
 type RequestBody struct {
-	Required bool              `json:"required" description:"是否必须"`
 	Content  *PathModelContent `json:"content,omitempty" description:"请求体模型"`
+	Required bool              `json:"required" description:"是否必须"`
 }
 
 // PathModelContent 路由中请求体 RequestBody 和 响应体中返回值 Responses 模型
 type PathModelContent struct {
-	MIMEType ApplicationMIMEType `json:"-"`
 	Schema   ModelContentSchema  `json:"schema" description:"模型引用文档"`
+	MIMEType ApplicationMIMEType `json:"-"`
 }
 
 // MarshalJSON 自定义序列化
@@ -187,9 +187,9 @@ func (p *PathModelContent) MarshalJSON() ([]byte, error) {
 
 // Response 路由返回体，包含了返回状态码，状态码说明和返回值模型
 type Response struct {
-	StatusCode  int               `json:"-" description:"状态码"`
-	Description string            `json:"description" description:"说明"`
 	Content     *PathModelContent `json:"content" description:"返回值模型"`
+	Description string            `json:"description" description:"说明"`
+	StatusCode  int               `json:"-" description:"状态码"`
 }
 
 // Operation 路由HTTP方法: Get/Post/Patch/Delete 等操作方法
@@ -210,8 +210,8 @@ type Operation struct {
 // MarshalJSON 重写序列化方法，修改 Responses 和 RequestBody 字段
 func (o *Operation) MarshalJSON() ([]byte, error) {
 	type OperationWithResponseMap struct {
-		Operation
 		Responses map[int]*Response `json:"responses" description:"响应体"`
+		Operation
 	}
 
 	orm := OperationWithResponseMap{}
@@ -233,8 +233,6 @@ func (o *Operation) MarshalJSON() ([]byte, error) {
 
 // PathItem 路由选项，由于同一个路由可以存在不同的操作方法，因此此选项可以存在多个 Operation
 type PathItem struct {
-	Path string `json:"-" description:"请求绝对路径"` // 无需包含此字段
-	// 路由下存在的多种方法, 若字段无内容，则忽略
 	Get    *Operation `json:"get,omitempty" description:"GET方法"`
 	Put    *Operation `json:"put,omitempty" description:"PUT方法"`
 	Post   *Operation `json:"post,omitempty" description:"POST方法"`
@@ -242,6 +240,7 @@ type PathItem struct {
 	Delete *Operation `json:"delete,omitempty" description:"DELETE方法"`
 	Head   *Operation `json:"head,omitempty" description:"header方法"`
 	Trace  *Operation `json:"trace,omitempty" description:"trace方法"`
+	Path   string     `json:"-" description:"请求绝对路径"`
 }
 
 // Paths openapi 的路由部分
@@ -266,12 +265,12 @@ func (p *Paths) MarshalJSON() ([]byte, error) {
 
 // OpenApi 模型类, 移除 FastApi 中不常用的属性
 type OpenApi struct {
-	Version     string      `json:"openapi" description:"Open API版本号"`
 	Info        *Info       `json:"info,omitempty" description:"联系信息"`
 	Components  *Components `json:"components" description:"模型文档"`
 	Paths       *Paths      `json:"paths" description:"路由列表,同一路由存在多个方法文档"`
-	initialized bool
+	Version     string      `json:"openapi" description:"Open API版本号"`
 	cache       []byte
+	initialized bool
 }
 
 // AddDefinition 添加一个模型文档

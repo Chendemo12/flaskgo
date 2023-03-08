@@ -3,7 +3,7 @@ module github.com/Chendemo12/flaskgo
 go 1.19
 
 require (
-	github.com/Chendemo12/functools v0.1.19
+	github.com/Chendemo12/functools v0.1.21
 	github.com/go-playground/validator/v10 v10.11.1
 	github.com/gofiber/fiber/v2 v2.40.1
 )

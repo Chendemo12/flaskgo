@@ -42,7 +42,7 @@ func (c *Context) Service() *Service { return c.app.Service() }
 func (c *Context) Context() *fiber.Ctx { return c.ec }
 
 // CustomContext 获取自定义服务上下文
-func (c *Context) CustomContext() CustomContextIface { return c.app.Service().CustomContext() }
+func (c *Context) CustomContext() CustomService { return c.app.Service().CustomContext() }
 
 func (c *Context) Config() any { return c.app.Service().Config() }
 
@@ -219,8 +219,8 @@ func (c *Context) AnyResponse(statusCode int, content any, contentType string) *
 
 // ------------------------------------------------------------------------------------
 
-// CustomContextIface 自定义服务上下文信息
-type CustomContextIface interface {
+// CustomService 自定义服务上下文信息
+type CustomService interface {
 	Config() any // 获取配置文件
 }
 
@@ -229,10 +229,10 @@ type CustomContextIface interface {
 // 但可通过SetServiceContext()接口设置自定义的上下文信息，并在每一个路由钩子函数中可得
 type Service struct {
 	logger   logger.Iface        `description:"日志对象"`
-	addr     string              `description:"绑定地址"`
-	ctx      CustomContextIface  `description:"上层自定义服务依赖"`
+	ctx      CustomService       `description:"上层自定义服务依赖"`
 	validate *validator.Validate `description:"请求体验证包"`
 	openApi  *openapi.OpenApi    `description:"模型文档"`
+	addr     string              `description:"绑定地址"`
 }
 
 // Config 获取自定义配置文件
@@ -244,13 +244,13 @@ func (s *Service) Config() any {
 }
 
 // CustomContext 获取自定义服务上下文
-func (s *Service) CustomContext() CustomContextIface { return s.ctx }
+func (s *Service) CustomContext() CustomService { return s.ctx }
 
 // Deprecated: ServiceContext 获取自定义服务上下文
-func (s *Service) ServiceContext() CustomContextIface { return s.CustomContext() }
+func (s *Service) ServiceContext() CustomService { return s.CustomContext() }
 
 // SetServiceContext 修改自定义服务上下文
-func (s *Service) SetServiceContext(ctx CustomContextIface) *Service {
+func (s *Service) SetServiceContext(ctx CustomService) *Service {
 	s.ctx = ctx
 	return s
 }

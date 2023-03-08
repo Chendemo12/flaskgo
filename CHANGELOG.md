@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 0.3.6 - (2023-03-08)
+
+### Refactor
+
+- 更新`functools:v0.1.21`，引入`scheduler`;
+- 字段对齐;
+
+### Rename
+
+- `CustomContextIface` to `CustomService`;
+
 ## 0.3.5 - (2023-03-08)
 
 ### Refactor

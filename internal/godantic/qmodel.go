@@ -9,9 +9,9 @@ import (
 // QModel 查询参数或路径参数模型, 此类型会进一步转换为 openapi.Parameter
 type QModel struct {
 	Title  string            `json:"names,omitempty" description:"字段名称"`
-	InPath bool              `json:"in_path,omitempty" description:"是否是路径参数"`
 	Tag    reflect.StructTag `json:"tag,omitempty" description:"TAG"`
 	OType  OpenApiDataType   `json:"otype,omitempty" description:"openaapi 数据类型"`
+	InPath bool              `json:"in_path,omitempty" description:"是否是路径参数"`
 }
 
 // Schema 输出为OpenAPI文档模型,字典格式

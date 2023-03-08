@@ -38,11 +38,11 @@ func StructReflect(rt reflect.Type) *Metadata {
 }
 
 type MetaField struct {
+	RType reflect.Type `description:"反射字段类型"`
 	Field
-	Index     int          `json:"index" description:"当前字段所处的序号"`
-	Exported  bool         `json:"exported" description:"是否是导出字段"`
-	Anonymous bool         `json:"anonymous" description:"是否是嵌入字段"`
-	RType     reflect.Type `description:"反射字段类型"`
+	Index     int  `json:"index" description:"当前字段所处的序号"`
+	Exported  bool `json:"exported" description:"是否是导出字段"`
+	Anonymous bool `json:"anonymous" description:"是否是嵌入字段"`
 }
 
 // IsInnerModel 是否是内部模型，如果是则需要重新生成其文档
@@ -64,11 +64,11 @@ func (m *MetaField) InnerModel() *Metadata {
 }
 
 type Metadata struct {
-	names       []string        `description:"结构体名称,包名.结构体名称"`
 	description string          `description:"模型描述"`
+	oType       OpenApiDataType `description:"openaapi 数据类型"`
+	names       []string        `description:"结构体名称,包名.结构体名称"`
 	fields      []*MetaField    `description:"结构体字段"`
 	innerFields []*MetaField    `description:"内部字段"`
-	oType       OpenApiDataType `description:"openaapi 数据类型"`
 }
 
 // Name 获取结构体名称

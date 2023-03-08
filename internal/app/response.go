@@ -70,8 +70,8 @@ func (v HTTPValidationError) SchemaDesc() string { return "HTTPValidationError" 
 
 type CustomError404 struct {
 	godantic.BaseModel
-	ValidationError
 	ErrorCode string `json:"error_code" Description:"Error Code" binding:"required"`
+	ValidationError
 }
 
 func (v CustomError404) SchemaDesc() string { return "CustomError404" }
