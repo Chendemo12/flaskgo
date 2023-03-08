@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"github.com/Chendemo12/flaskgo/internal/core"
 	"github.com/Chendemo12/flaskgo/internal/godantic"
 	"github.com/Chendemo12/functools/logger"
@@ -145,7 +146,7 @@ func (f *FlaskGo) mountUserRoutes() {
 //  5. 挂载自定义路由 mountUserRoutes
 //  6. 安装创建swagger文档 makeSwaggerDocs
 func (f *FlaskGo) initialize() *FlaskGo {
-	f.service.Logger().Info("Run mode: " + core.GetMode())
+	f.service.Logger().Debug("Run at: " + core.GetMode(true))
 
 	// 创建 fiber.App
 	f.engine = createFiberApp(f.title, f.version)
@@ -170,6 +171,7 @@ func (f *FlaskGo) runCronJob() *FlaskGo {
 	defer close(f.isStarted)
 
 	for _, job := range f.jobs {
+		f.service.Logger().Debug(fmt.Sprintf("Cronjob: '%s' started.", job.String()))
 		job.Run()
 	}
 
@@ -188,7 +190,7 @@ func (f *FlaskGo) serve() *FlaskGo {
 	}
 
 	f.isStarted <- struct{}{} // 解除阻塞上层的任务
-	f.service.Logger().Info("HTTP server listening on: " + f.service.Addr())
+	f.service.Logger().Debug("HTTP server listening on: " + f.service.Addr())
 
 	// 在各种初始化及启动事件执行完成之后触发
 	return f.runCronJob()
@@ -200,6 +202,7 @@ func (f *FlaskGo) Host() string    { return f.host }
 func (f *FlaskGo) Port() string    { return f.port }
 func (f *FlaskGo) Version() string { return f.version }
 func (f *FlaskGo) IsDebug() bool   { return core.IsDebug() }
+func (f *FlaskGo) PID() int        { return os.Getpid() }
 
 // Description 描述信息，同时会显示在Swagger文档上
 func (f *FlaskGo) Description() string { return f.description }
@@ -214,35 +217,17 @@ func (f *FlaskGo) Service() *Service { return f.service }
 func (f *FlaskGo) CustomServiceContext() CustomContextIface { return f.service.ctx }
 
 // APIRouters 获取全部注册的路由组
+//
 //	@return	[]*Router 路由组
 func (f *FlaskGo) APIRouters() []*Router { return f.routers }
 
 // Engine 获取fiber引擎
+//
 //	@return	*fiber.App fiber引擎
 func (f *FlaskGo) Engine() *fiber.App { return f.engine }
 
-// AcquireCtx 申请一个 Context 并初始化
-func (f *FlaskGo) AcquireCtx(fctx *fiber.Ctx) *Context {
-	c := f.pool.Get().(*Context)
-	// 初始化各种参数
-	c.ec = fctx
-	c.RequestBody = int64(1) // 初始化为1，避免访问错误
-	c.PathFields = map[string]string{}
-	c.QueryFields = map[string]string{}
-	return c
-}
-
-// ReleaseCtx 释放并归还 Context
-func (f *FlaskGo) ReleaseCtx(ctx *Context) {
-	ctx.ec = nil
-	ctx.RequestBody = int64(1)
-	ctx.PathFields = nil
-	ctx.QueryFields = nil
-
-	f.pool.Put(ctx)
-}
-
-// OnEvent 添加启动事件
+// OnEvent 添加事件
+//
 //	@param	kind	事件类型，取值需为	"startup"	/	"shutdown"
 //	@param	fs		func()		事件
 func (f *FlaskGo) OnEvent(kind EventKind, fc func()) *FlaskGo {
@@ -262,37 +247,32 @@ func (f *FlaskGo) OnEvent(kind EventKind, fc func()) *FlaskGo {
 	return f
 }
 
-// AddResponseHeader 添加一个响应头
-//	@param	key		string	键
-//	@param	value	string	值
-func (f *FlaskGo) AddResponseHeader(key, value string) *FlaskGo {
-	// 首先判定是否已经存在
-	for i := 0; i < len(responseHeaders); i++ {
-		if responseHeaders[i].Key == key {
-			responseHeaders[i].Value = value
-			return f
-		}
-	}
-	// 不存在，新建
-	responseHeaders = append(responseHeaders, &ResponseHeader{
-		Key:   key,
-		Value: value,
+// OnStartup  添加启动事件
+//
+//	@param	fs	func()	事件
+func (f *FlaskGo) OnStartup(fc func()) *FlaskGo {
+	f.events = append(f.events, &Event{
+		Type: startupEvent,
+		Fc:   fc,
 	})
+
 	return f
 }
 
-// DeleteResponseHeader 删除一个响应头
-//	@param	key	string	键
-func (f *FlaskGo) DeleteResponseHeader(key string) *FlaskGo {
-	for i := 0; i < len(responseHeaders); i++ {
-		if responseHeaders[i].Key == key {
-			responseHeaders[i].Value = ""
-		}
-	}
+// OnShutdown 添加关闭事件
+//
+//	@param	fs	func()	事件
+func (f *FlaskGo) OnShutdown(fc func()) *FlaskGo {
+	f.events = append(f.events, &Event{
+		Type: shutdownEvent,
+		Fc:   fc,
+	})
+
 	return f
 }
 
 // ReplaceCtx 替换自定义服务上下文
+//
 //	@param	service	CustomContextIface	服务上下文
 func (f *FlaskGo) ReplaceCtx(ctx CustomContextIface) *FlaskGo {
 	f.service.SetServiceContext(ctx)
@@ -300,30 +280,15 @@ func (f *FlaskGo) ReplaceCtx(ctx CustomContextIface) *FlaskGo {
 }
 
 // ReplaceLogger 替换日志句柄，此操作必须在run之前进行
+//
 //	@param	logger	logger.Iface	日志句柄
 func (f *FlaskGo) ReplaceLogger(logger logger.Iface) *FlaskGo {
 	f.service.ReplaceLogger(logger)
 	return f
 }
 
-// ReplaceErrorHandler 替换fiber错误处理方法，是 请求错误处理方法
-func (f *FlaskGo) ReplaceErrorHandler(fc fiber.ErrorHandler) *FlaskGo {
-	fiberErrorHandler = fc
-	return f
-}
-
-// ReplaceStackTraceHandler 替换错误堆栈处理函数，即 recover 方法
-func (f *FlaskGo) ReplaceStackTraceHandler(fc StackTraceHandlerFunc) *FlaskGo {
-	recoverHandler = fc
-	return f
-}
-
-// ReplaceRecover 重写全局 recover 方法
-func (f *FlaskGo) ReplaceRecover(fc StackTraceHandlerFunc) *FlaskGo {
-	return f.ReplaceStackTraceHandler(fc)
-}
-
 // SetDescription 设置APP的详细描述信息
+//
 //	@param	Description	string	详细描述信息
 func (f *FlaskGo) SetDescription(description string) *FlaskGo {
 	f.description = description
@@ -331,6 +296,7 @@ func (f *FlaskGo) SetDescription(description string) *FlaskGo {
 }
 
 // IncludeRouter 注册一个路由组
+//
 //	@param	router	*Router	路由组
 func (f *FlaskGo) IncludeRouter(router *Router) *FlaskGo {
 	f.routers = append(f.routers, router)
@@ -340,31 +306,6 @@ func (f *FlaskGo) IncludeRouter(router *Router) *FlaskGo {
 // Use 添加中间件
 func (f *FlaskGo) Use(middleware ...any) *FlaskGo {
 	f.middlewares = append(f.middlewares, middleware...)
-	return f
-}
-
-// ActivateHotSwitch 创建一个热开关，监听信号量30，用来改变程序调试开关状态
-func (f *FlaskGo) ActivateHotSwitch() *FlaskGo {
-	swt := make(chan os.Signal)
-	signal.Notify(swt, syscall.Signal(core.HotSwitchSigint))
-
-	go func() {
-		for range swt {
-			if f.IsDebug() {
-				resetRunMode(false)
-			} else {
-				resetRunMode(true)
-			}
-		}
-	}()
-
-	return f
-}
-
-// Deprecated: RunCronjob 启动定时任务, 此函数内部通过创建一个协程来执行任务，并且阻塞至 FlaskGo 完成初始化
-//	@param	tasker	func(service CustomContextIface)	error	定时任务
-//	@param	service	CustomContextIface					服务依赖
-func (f *FlaskGo) RunCronjob(_ func(ctx *Service) error) *FlaskGo {
 	return f
 }
 
@@ -383,22 +324,27 @@ func (f *FlaskGo) AddCronjob(jobs ...CronJob) *FlaskGo {
 	return f
 }
 
-// Run 启动服务, 此方法会阻塞运行，因此必须放在main函数结尾
-func (f *FlaskGo) Run(host, port string) {
-	if !fiber.IsChild() {
-		f.host = host
-		f.port = port
-		f.serve()
-	}
-	// 关闭开关
-	quit := make(chan os.Signal, core.ShutdownSigint)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+// ActivateHotSwitch 创建一个热开关，监听信号量30，用来改变程序调试开关状态
+func (f *FlaskGo) ActivateHotSwitch() *FlaskGo {
+	swt := make(chan os.Signal, 1)
+	signal.Notify(swt, syscall.Signal(core.HotSwitchSigint))
 
 	go func() {
-		log.Fatal(f.engine.Listen(f.service.Addr()))
+		for range swt {
+			if f.IsDebug() {
+				resetRunMode(false)
+			} else {
+				resetRunMode(true)
+			}
+			f.service.Logger().Debug("Hot-switch received, convert to:", core.GetMode())
+		}
 	}()
 
-	<-quit     // 阻塞进程，直到接收到停止信号,准备关闭程序
+	return f
+}
+
+// Shutdown 平滑关闭
+func (f *FlaskGo) Shutdown() {
 	f.cancel() // 标记结束
 
 	// 执行关机前事件
@@ -408,11 +354,48 @@ func (f *FlaskGo) Run(host, port string) {
 		}
 	}
 
-	// TODO：NotImplement 平滑关机
-	f.service.Logger().Info("Server exit")
+	go func() {
+		err := f.Engine().Shutdown()
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}()
+	// Engine().Shutdown() 执行成功后将会直接退出进程，以下代码段仅当超时未关闭时执行到。
+	// Shutdown() 不会关闭设置了 keepalive 的连接，除非设置了 ReadTimeout ，因此设置以下内容以确保关闭.
+	<-time.After(core.ShutdownWithTimeout * time.Second)
+	// 此处避免因logger关闭引发错误
+	fmt.Println("Forced shutdown.") // 仅当超时时会到达此行
+}
+
+// Run 启动服务, 此方法会阻塞运行，因此必须放在main函数结尾
+// 此方法已设置关闭事件和平滑关闭.
+// 当 Interrupt 信号被触发时，首先会关闭 根Context，然后逐步执行“关机事件”，最后调用平滑关闭方法，关闭服务
+// 启动前通过 SetShutdownTimeout 设置"平滑关闭异常时"的最大超时时间
+func (f *FlaskGo) Run(host, port string) {
+	if !fiber.IsChild() {
+		f.host = host
+		f.port = port
+		f.serve()
+	}
+
+	go func() {
+		log.Fatal(f.engine.Listen(f.service.Addr()))
+	}()
+
+	// 关闭开关, buffered
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+
+	if core.DumpPIDEnabled {
+		f.DumpPID()
+	}
+
+	<-quit // 阻塞进程，直到接收到停止信号,准备关闭程序
+	f.Shutdown()
 }
 
 // NewFlaskGo 创建一个WEB服务
+//
 //	@param	title	string				Application	name
 //	@param	version	string				Version
 //	@param	debug	bool				是否开启调试模式

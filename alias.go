@@ -5,9 +5,7 @@ package flaskgo
 
 import (
 	"github.com/Chendemo12/flaskgo/internal/app"
-	"github.com/Chendemo12/flaskgo/internal/core"
 	"github.com/Chendemo12/flaskgo/internal/godantic"
-	"time"
 )
 
 //goland:noinspection GoUnusedGlobalVariable
@@ -98,25 +96,3 @@ var (
 	HTMLResponse            = app.HTMLResponse
 	AdvancedResponse        = app.AdvancedResponse
 )
-
-// DisableBaseRoutes 禁用基础路由
-func DisableBaseRoutes() { core.BaseRoutesDisabled = true }
-
-// DisableSwagAutoCreate 禁用文档自动生成
-func DisableSwagAutoCreate() { core.SwaggerDisabled = true }
-
-// DisableRequestValidate 禁用请求体自动验证
-func DisableRequestValidate() { core.RequestValidateDisabled = true }
-
-// DisableResponseValidate 禁用返回体自动验证
-func DisableResponseValidate() { core.ResponseValidateDisabled = true }
-
-// DisableMultipleProcess 禁用多进程
-func DisableMultipleProcess() { core.MultipleProcessDisabled = true }
-
-// ShutdownWithTimeout 指定关机前最大等待时间
-func ShutdownWithTimeout() time.Duration { return core.ShutdownWithTimeout * time.Second }
-
-// SetShutdownTimeout 修改关机前最大等待时间
-//	@param	timeout	in	修改关机前最大等待时间,	单位秒
-func SetShutdownTimeout(timeout int) { core.ShutdownWithTimeout = time.Duration(timeout) }

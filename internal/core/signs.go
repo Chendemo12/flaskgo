@@ -5,7 +5,6 @@ import "time"
 
 const (
 	HotSwitchSigint = 30 // 热调试开关
-	ShutdownSigint  = 1  // 关机信号
 )
 
 var (
@@ -14,17 +13,26 @@ var (
 	RequestValidateDisabled  = true             // 禁用请求体自动验证
 	ResponseValidateDisabled = false            // 禁用返回体自动验证
 	MultipleProcessDisabled  = true             // 禁用多进程
-	ShutdownWithTimeout      = 20 * time.Second // 关机前的等待时间
+	ShutdownWithTimeout      = 20 * time.Second // 关机前的最大等待时间
+	DumpPIDEnabled           = false            // 是否记录PID
 )
 
 var isDebug bool = false
 
 func IsDebug() bool   { return isDebug }
 func SetMode(md bool) { isDebug = md }
-func GetMode() string {
-	if isDebug {
-		return "Development Environment"
+func GetMode(short ...bool) string {
+	if len(short) > 0 {
+		if isDebug {
+			return "Dev"
+		} else {
+			return "Prod"
+		}
 	} else {
-		return "Production Environment"
+		if isDebug {
+			return "Development Environment"
+		} else {
+			return "Production Environment"
+		}
 	}
 }

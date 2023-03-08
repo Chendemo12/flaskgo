@@ -125,7 +125,10 @@ func getSimpleFrom(s *flaskgo.Context) *flaskgo.Response {
 }
 
 func getExampleForm(s *flaskgo.Context) *flaskgo.Response {
+
+	time.Sleep(10 * time.Second)
 	//return s.OKResponse(&ExampleForm{Name: s.PathFields["name"]})
+
 	return s.OKResponse(SimpleForm{
 		Name:     s.PathFields["name"],
 		Age:      0,
@@ -172,22 +175,23 @@ func (c *Clock) Do(ctx context.Context) error {
 }
 
 func ExampleFlaskGo_App() {
-	flaskgo.DisableMultipleProcess()
-	flaskgo.DisableRequestValidate()
-
 	conf := &Configuration{}
 	conf.HTTP.Host = "0.0.0.0"
 	conf.HTTP.Port = "8088"
 	ctx := &ServiceContext{Conf: conf}
 
 	app := flaskgo.NewFlaskGo("FlaskGo Example", "0.2.1", true, ctx)
-	app.IncludeRouter(makeRouter()).
+	app.DisableMultipleProcess().
+		EnableDumpPID().
+		DisableRequestValidate().
+		SetShutdownTimeout(5).
+		IncludeRouter(makeRouter()).
 		SetDescription("一个简单的FlaskGo应用程序,在启动app之前首先需要创建并替换ServiceContext,最后调用Run来运行程序").
 		AddCronjob(&Clock{})
 
+	app.OnEvent("startup", func() { app.Service().Logger().Info("current pid: ", app.PID()) })
 	app.OnEvent("startup", func() { app.Service().Logger().Info("startup event: 1") })
 	app.OnEvent("startup", func() { app.Service().Logger().Info("startup event: 2") })
-	app.OnEvent("startup", func() { app.Service().Logger().Info("startup event: 3") })
 	app.OnEvent("shutdown", func() { app.Service().Logger().Info("shutdown event: 1") })
 	app.OnEvent("shutdown", func() { app.Service().Logger().Info("shutdown event: 2") })
 
