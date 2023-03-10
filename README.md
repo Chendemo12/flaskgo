@@ -1,6 +1,6 @@
 # flaskgo
 
-类Flask风格的基于gin封装的参考FastApi实现的模板
+类Flask风格的基于`fiber`封装的参考`FastApi`实现的模板
 
 ## Usage:
 
@@ -31,18 +31,13 @@ fieldalignment -fix ./...
 - Linux
 
 ```bash
-echo "machine gitlab.cowave.com login chenguang.li@cowave.com password glpat-zVc6XisKQfy-TPxzCym8" > ~/.netrc
-
-export GOSUMDB=off
 go get -v github.com/Chendemo12/functools
 ```
 
 - Windows
 
 ```powershell
-echo "machine gitlab.cowave.com login chenguang.li@cowave.com password glpat-zVc6XisKQfy-TPxzCym8" > ~/.netrc
-
-$Env:GOSUMDB = "off"
+# $Env:GOSUMDB = "off"
 go get -v github.com/Chendemo12/flaskgo
 ```
 
@@ -57,47 +52,20 @@ go get https://github.com/Chendemo12/flaskgo
 ### Guide
 
 - [guide example](./test/example.go)
-- [sample](https://github.com/Chendemo12/sample)
 
 ## TODO:
 
-- [ ] 平滑关机；
+- [x] 平滑关机；
 - swagger文档自动生成：
     - [x] 支持数组类型的返回值文档生成；
-    - [ ] 支持匿名结构体字段；
+    - [x] 支持匿名结构体字段；
     - [x] 支持结构体嵌套数组的文档生成；
     - [x] 结构体嵌套结构体的文档生成；
 - 请求体自动校验
-    - [ ] 请求体校验方法；
+    - [x] 请求体校验方法；
 - 响应体：
     - [x] 支持响应字节流；
 
 ## 一些常用的API
 
 - 全部`api`可见[`alias.go`](./alias.go)文件；
-
-#### `FlaskGo`相关方法：
-
-- `NewFlaskGo`:
-- `GetFlaskGo`:
-- `Response`:
-- `JSONResponse`:
-- `ResourceNotFound`:
-- `APIRouter`:
-- `AddResponseHeader`:
-- `DeleteResponseHeader`:
-
-结构体相关方法：
-
-- `StructToMap`:
-- `StructReflect`:
-- `GetStructName`:
-- `GetStructFullName`:
-- `GetStructFieldsValue`:
-- `GetStructFieldsName`:
-- `GetStructFieldsTags`:
-- `GetStructFieldsType`:
-- `StructToJson`:
-- `StructToString`:
-- `FormatStruct`:
-- `MakeStruct`:
